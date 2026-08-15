@@ -147,19 +147,31 @@ def reset_database():
         raise HTTPException(status_code=500, detail="Failed to reset vector database.")
     return {"message": "Vector database reset successfully."}
 
-# Mount static frontend if available
+# Mount static frontend
 frontend_dist = settings.BASE_DIR / "frontend" / "dist"
 if frontend_dist.exists() and (frontend_dist / "index.html").exists():
     app.mount("/assets", StaticFiles(directory=str(frontend_dist / "assets"), html=False), name="static_assets")
 
     @app.get("/{full_path:path}")
     async def serve_frontend(full_path: str):
+        if full_path.startswith("api/"):
+            raise HTTPException(status_code=404, detail="API endpoint not found.")
         target = frontend_dist / full_path
         if target.exists() and target.is_file():
-            # Explicit media type if needed
             mime_type, _ = mimetypes.guess_type(str(target))
             return FileResponse(target, media_type=mime_type)
         return FileResponse(frontend_dist / "index.html", media_type="text/html")
+else:
+    @app.get("/")
+    def root_fallback():
+        return {
+            "status": "online",
+            "message": "RAG Knowledge Base API is running.",
+            "docs": "/docs",
+            "api_health": "/api/health",
+            "api_stats": "/api/stats"
+        }
+
 
 if __name__ == "__main__":
     import uvicorn
