@@ -1,14 +1,3 @@
----
-title: Rag Knowledge Base
-emoji: 🔍
-colorFrom: indigo
-colorTo: blue
-sdk: docker
-app_port: 7860
-pinned: false
-license: mit
----
-
 # RAG Knowledge Base System
 
 [![Live Demo](https://img.shields.io/badge/Live_Demo-Render-46E3B7?style=flat-square&logo=render&logoColor=white)](https://rag-knowledge-base-jhms.onrender.com)
