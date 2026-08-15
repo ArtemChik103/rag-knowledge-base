@@ -160,3 +160,11 @@ if frontend_dist.exists() and (frontend_dist / "index.html").exists():
             mime_type, _ = mimetypes.guess_type(str(target))
             return FileResponse(target, media_type=mime_type)
         return FileResponse(frontend_dist / "index.html", media_type="text/html")
+
+if __name__ == "__main__":
+    import uvicorn
+    port = int(os.environ.get("PORT", 8000))
+    host = os.environ.get("HOST", "0.0.0.0")
+    logger.info(f"Starting server on {host}:{port}")
+    uvicorn.run("backend.main:app", host=host, port=port, reload=False)
+

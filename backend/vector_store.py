@@ -26,13 +26,14 @@ class MultilingualEmbeddingFunction(EmbeddingFunction[Documents]):
     """High-performance embedding function combining ONNX Runtime, PyTorch inference_mode, and LRU Cache."""
     def __init__(self, model_name: str = settings.EMBEDDING_MODEL):
         self.model_name = model_name
+        self.full_hf_name = model_name if "/" in model_name else f"sentence-transformers/{model_name}"
         self._onnx_session = None
         self._tokenizer = None
         self._torch_model = None
         self._fallback_mode = False
         self._cache: Dict[str, List[float]] = {}
         self._max_cache_size = 2048
-        self._init_engine()
+        self._initialized = False
 
     def name(self) -> str:
         return f"multilingual_{self.model_name.replace('/', '_')}"
@@ -41,6 +42,7 @@ class MultilingualEmbeddingFunction(EmbeddingFunction[Documents]):
         return {"model_name": self.model_name}
 
     def _init_engine(self):
+
         onnx_file = settings.BASE_DIR / "models" / "model.onnx"
         
         # 1. Try ONNX Runtime first (Fastest C++ inference with ORT_ENABLE_ALL)
@@ -49,7 +51,7 @@ class MultilingualEmbeddingFunction(EmbeddingFunction[Documents]):
                 import onnxruntime as ort
                 from transformers import AutoTokenizer
                 
-                logger.info(f"Initializing ONNX Runtime with optimized model: {onnx_file}")
+                logger.info(f"Initializing ONNX Runtime with model: {onnx_file}")
                 sess_opts = ort.SessionOptions()
                 sess_opts.graph_optimization_level = ort.GraphOptimizationLevel.ORT_ENABLE_ALL
                 sess_opts.intra_op_num_threads = min(4, os.cpu_count() or 2)
@@ -60,18 +62,17 @@ class MultilingualEmbeddingFunction(EmbeddingFunction[Documents]):
                     sess_options=sess_opts,
                     providers=["CPUExecutionProvider"]
                 )
-                self._tokenizer = AutoTokenizer.from_pretrained(self.model_name, use_fast=True)
+                self._tokenizer = AutoTokenizer.from_pretrained(self.full_hf_name, use_fast=True)
                 logger.info("ONNX Runtime embedding session ready.")
                 return
             except Exception as e:
-                logger.warning(f"Failed to load ONNX model ({e}), falling back to PyTorch.")
+                logger.warning(f"Failed to load ONNX session ({e}), falling back to PyTorch.")
 
         # 2. Fall back to PyTorch SentenceTransformers with torch.inference_mode()
         try:
             import torch
             from sentence_transformers import SentenceTransformer
             
-            # Configure CPU SIMD threads
             cpu_threads = min(4, os.cpu_count() or 2)
             torch.set_num_threads(cpu_threads)
 
@@ -95,7 +96,12 @@ class MultilingualEmbeddingFunction(EmbeddingFunction[Documents]):
         if not input:
             return []
 
+        if not self._initialized:
+            self._init_engine()
+            self._initialized = True
+
         # 1. Instant O(1) in-memory LRU cache lookup
+
         cached_results: List[Optional[List[float]]] = [self._cache.get(t) for t in input]
         uncached_indices = [i for i, v in enumerate(cached_results) if v is None]
 
@@ -108,7 +114,6 @@ class MultilingualEmbeddingFunction(EmbeddingFunction[Documents]):
         # 2. ONNX Runtime execution (if available)
         if self._onnx_session is not None and self._tokenizer is not None:
             try:
-                # Vectorized batch processing
                 batch_size = 32
                 for b_start in range(0, len(uncached_texts), batch_size):
                     b_texts = uncached_texts[b_start : b_start + batch_size]
@@ -173,7 +178,6 @@ class MultilingualEmbeddingFunction(EmbeddingFunction[Documents]):
 
         # 5. Populate LRU cache
         if len(self._cache) > self._max_cache_size:
-            # Evict half of oldest cache entries
             self._cache = dict(list(self._cache.items())[self._max_cache_size // 2:])
 
         for idx, text, emb in zip(uncached_indices, uncached_texts, new_embeddings):
@@ -366,11 +370,13 @@ class VectorStore:
     def get_stats(self) -> Dict[str, Any]:
         docs = self.list_documents()
         total_chunks = self.collection.count()
+        engine_name = "ONNXRuntime" if self.embedding_fn._onnx_session else ("PyTorch" if self.embedding_fn._torch_model else "Fallback")
         return {
             "total_documents": len(docs),
             "total_chunks": total_chunks,
             "collection_name": self.collection_name,
             "embedding_model": self.embedding_fn.model_name,
+            "engine": engine_name,
+            "cache_entries": len(self.embedding_fn._cache),
             "is_fallback_embedding": self.embedding_fn._fallback_mode,
-            "engine": "ONNXRuntime" if self.embedding_fn._onnx_session else ("PyTorch" if self.embedding_fn._torch_model else "Fallback")
         }
