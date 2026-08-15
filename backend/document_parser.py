@@ -55,16 +55,9 @@ class DocumentParser:
         doc = fitz.open(str(file_path))
         total_pages = len(doc)
 
-        pages_with_idx = [(i + 1, doc[i]) for i in range(total_pages)]
-        
-        # Parallel extraction across pages for instant throughput
-        if total_pages > 4:
-            with ThreadPoolExecutor(max_workers=min(4, os.cpu_count() or 2)) as executor:
-                pages_data = list(executor.map(DocumentParser._extract_page_fitz, pages_with_idx))
-        else:
-            pages_data = [DocumentParser._extract_page_fitz(item) for item in pages_with_idx]
-
+        pages_data = [DocumentParser._extract_page_fitz((i + 1, doc[i])) for i in range(total_pages)]
         doc.close()
+
 
         full_text_parts = [f"--- [Страница {p.page_number}] ---\n{p.text}" for p in pages_data if p.text]
         raw_text = "\n\n".join(full_text_parts)
