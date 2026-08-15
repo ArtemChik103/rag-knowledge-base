@@ -60,7 +60,6 @@ class MultilingualEmbeddingFunction(EmbeddingFunction[Documents]):
             if onnx_file.exists():
                 try:
                     import onnxruntime as ort
-                    from transformers import AutoTokenizer
                     
                     logger.info(f"Initializing ONNX Runtime with model: {onnx_file}")
                     sess_opts = ort.SessionOptions()
@@ -75,8 +74,18 @@ class MultilingualEmbeddingFunction(EmbeddingFunction[Documents]):
                         providers=["CPUExecutionProvider"]
                     )
 
-                    tok_src = str(tokenizer_dir) if tokenizer_dir.exists() else self.full_hf_name
-                    self._tokenizer = AutoTokenizer.from_pretrained(tok_src, use_fast=True)
+                    tokenizer_json = tokenizer_dir / "tokenizer.json"
+                    if tokenizer_json.exists():
+                        from tokenizers import Tokenizer
+                        fast_tok = Tokenizer.from_file(str(tokenizer_json))
+                        fast_tok.enable_padding(pad_id=0, pad_token="[PAD]")
+                        fast_tok.enable_truncation(max_length=256)
+                        self._tokenizer = fast_tok
+                    else:
+                        from transformers import AutoTokenizer
+                        tok_src = str(tokenizer_dir) if tokenizer_dir.exists() else self.full_hf_name
+                        self._tokenizer = AutoTokenizer.from_pretrained(tok_src, use_fast=True)
+
                     logger.info(f"ONNX Runtime embedding session ready ({onnx_file.name}).")
                     return
                 except Exception as e:
@@ -117,7 +126,6 @@ class MultilingualEmbeddingFunction(EmbeddingFunction[Documents]):
             self._initialized = True
 
         # 1. Instant O(1) in-memory LRU cache lookup
-
         cached_results: List[Optional[List[float]]] = [self._cache.get(t) for t in input]
         uncached_indices = [i for i, v in enumerate(cached_results) if v is None]
 
@@ -130,30 +138,44 @@ class MultilingualEmbeddingFunction(EmbeddingFunction[Documents]):
         # 2. ONNX Runtime execution (if available)
         if self._onnx_session is not None and self._tokenizer is not None:
             try:
-                batch_size = 32
+                batch_size = 64
                 for b_start in range(0, len(uncached_texts), batch_size):
                     b_texts = uncached_texts[b_start : b_start + batch_size]
-                    encoded_inputs = self._tokenizer(
-                        b_texts,
-                        padding=True,
-                        truncation=True,
-                        max_length=256,
-                        return_tensors="np"
-                    )
                     
-                    ort_inputs = {
-                        "input_ids": encoded_inputs["input_ids"],
-                        "attention_mask": encoded_inputs["attention_mask"],
-                    }
-                    if "token_type_ids" in encoded_inputs:
-                        ort_inputs["token_type_ids"] = encoded_inputs["token_type_ids"]
+                    if hasattr(self._tokenizer, "encode_batch"):
+                        # Rust tokenizers (sub-millisecond)
+                        encoded = self._tokenizer.encode_batch(b_texts)
+                        input_ids = np.array([e.ids for e in encoded], dtype=np.int64)
+                        attention_mask = np.array([e.attention_mask for e in encoded], dtype=np.int64)
+                        token_type_ids = np.array([e.type_ids for e in encoded], dtype=np.int64)
+                        ort_inputs = {
+                            "input_ids": input_ids,
+                            "attention_mask": attention_mask,
+                            "token_type_ids": token_type_ids,
+                        }
+                    else:
+                        encoded_inputs = self._tokenizer(
+                            b_texts,
+                            padding=True,
+                            truncation=True,
+                            max_length=256,
+                            return_tensors="np"
+                        )
+                        attention_mask = encoded_inputs["attention_mask"]
+                        ort_inputs = {
+                            "input_ids": encoded_inputs["input_ids"],
+                            "attention_mask": attention_mask,
+                        }
+                        if "token_type_ids" in encoded_inputs:
+                            ort_inputs["token_type_ids"] = encoded_inputs["token_type_ids"]
 
                     outputs = self._onnx_session.run(None, ort_inputs)
-                    pooled = self._mean_pooling_numpy(outputs[0], encoded_inputs["attention_mask"])
+                    pooled = self._mean_pooling_numpy(outputs[0], attention_mask)
                     new_embeddings.extend([row.tolist() for row in pooled])
             except Exception as e:
                 logger.error(f"ONNX inference error: {e}. Falling back to PyTorch.")
                 new_embeddings = []
+
 
         # 3. PyTorch SentenceTransformers execution (if ONNX didn't run)
         if not new_embeddings and self._torch_model is not None and not self._fallback_mode:
