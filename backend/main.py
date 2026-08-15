@@ -1,8 +1,16 @@
 import os
 import shutil
 import time
+import mimetypes
 from pathlib import Path
 from typing import Optional, List, Dict, Any
+
+# Ensure standard MIME types on all operating systems (Windows fix for module scripts)
+mimetypes.init()
+mimetypes.add_type("application/javascript", ".js")
+mimetypes.add_type("application/javascript", ".mjs")
+mimetypes.add_type("text/css", ".css")
+mimetypes.add_type("application/json", ".json")
 
 from fastapi import FastAPI, UploadFile, File, Form, HTTPException, Query, status
 from fastapi.middleware.cors import CORSMiddleware
@@ -142,11 +150,13 @@ def reset_database():
 # Mount static frontend if available
 frontend_dist = settings.BASE_DIR / "frontend" / "dist"
 if frontend_dist.exists() and (frontend_dist / "index.html").exists():
-    app.mount("/assets", StaticFiles(directory=str(frontend_dist / "assets")), name="static_assets")
+    app.mount("/assets", StaticFiles(directory=str(frontend_dist / "assets"), html=False), name="static_assets")
 
     @app.get("/{full_path:path}")
     async def serve_frontend(full_path: str):
         target = frontend_dist / full_path
         if target.exists() and target.is_file():
-            return FileResponse(target)
-        return FileResponse(frontend_dist / "index.html")
+            # Explicit media type if needed
+            mime_type, _ = mimetypes.guess_type(str(target))
+            return FileResponse(target, media_type=mime_type)
+        return FileResponse(frontend_dist / "index.html", media_type="text/html")
