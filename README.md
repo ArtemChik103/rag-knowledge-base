@@ -11,7 +11,14 @@ license: mit
 
 # RAG Knowledge Base System
 
+[![Live Demo](https://img.shields.io/badge/Live_Demo-Render-46E3B7?style=flat-square&logo=render&logoColor=white)](https://rag-knowledge-base-jhms.onrender.com)
+[![FastAPI](https://img.shields.io/badge/FastAPI-0.115+-009688?style=flat-square&logo=fastapi&logoColor=white)](https://fastapi.tiangolo.com)
+[![React](https://img.shields.io/badge/React-18-61DAFB?style=flat-square&logo=react&logoColor=black)](https://reactjs.org)
+[![ChromaDB](https://img.shields.io/badge/ChromaDB-Vector_Store-orange?style=flat-square)](https://www.trychroma.com)
+
 Мини-сервис для загрузки текстовых документов (регламентов, инструкций), их векторизации в ChromaDB и выполнения семантического поиска с генерацией точных ответов и цитированием источников.
+
+**🌐 Онлайн-демо (Cloud):** [https://rag-knowledge-base-jhms.onrender.com](https://rag-knowledge-base-jhms.onrender.com)
 
 ---
 
@@ -19,10 +26,11 @@ license: mit
 
 - **Поддержка форматов:** PDF (с сохранением номеров страниц), TXT, Markdown.
 - **Векторная база данных:** ChromaDB с постоянным локальным хранилищем и HNSW-индексом по косинусному расстоянию.
-- **Мультиязычные эмбеддинги:** `sentence-transformers/paraphrase-multilingual-MiniLM-L12-v2` (384 измерения) + ONNX Runtime.
+- **Быстрые легковесные эмбеддинги:** `cointegrated/rubert-tiny2` (312 измерений) + квантованный ONNX Runtime INT8 (28 MB, sub-millisecond inference).
 - **Точные ответы и цитирование:** Синтез ответов с указанием названий документов, номеров страниц, индексов чанков и оценок сходства.
 - **Генератор тестового регламента:** Автоматическое создание многостраничного регламента компании ООО «ТехноИнновации» в формате PDF.
-- **Веб-интерфейс:** React + Tailwind CSS SPA со строгой визуальной иерархией, телеметрией задержки и инспектором чанков.
+- **Веб-интерфейс:** React + Vite + Tailwind CSS SPA со строгой визуальной иерархией, телеметрией задержки и инспектором чанков.
+
 
 ---
 
