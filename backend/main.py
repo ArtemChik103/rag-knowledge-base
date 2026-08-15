@@ -134,16 +134,16 @@ def run_query(request: QueryRequest):
 @app.post("/api/sample-document")
 def create_and_index_sample():
     try:
+        settings.UPLOAD_DIR.mkdir(parents=True, exist_ok=True)
         sample_path = settings.UPLOAD_DIR / "sample_company_policy.pdf"
         root_sample = settings.BASE_DIR / "sample_company_policy.pdf"
         
-        if root_sample.exists() and root_sample != sample_path:
-            shutil.copy(root_sample, sample_path)
-        elif not sample_path.exists():
-            generate_company_policy_pdf(sample_path)
+        target_path = root_sample if root_sample.exists() else sample_path
+        if not target_path.exists():
+            generate_company_policy_pdf(target_path)
         
         ingestion_result = rag_engine.ingest_file(
-            file_path=sample_path,
+            file_path=target_path,
             original_filename="sample_company_policy.pdf"
         )
         
@@ -154,6 +154,7 @@ def create_and_index_sample():
     except Exception as e:
         logger.error(f"Failed to create and index sample PDF: {e}")
         raise HTTPException(status_code=500, detail=f"Failed to create sample document: {e}")
+
 
 
 @app.post("/api/reset")
