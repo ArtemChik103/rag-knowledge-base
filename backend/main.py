@@ -46,6 +46,16 @@ app.add_middleware(
 vector_store = VectorStore()
 rag_engine = RAGEngine(vector_store=vector_store)
 
+@app.on_event("startup")
+def startup_warmup():
+    try:
+        logger.info("Pre-warming vector store and embedding engine...")
+        vector_store.embedding_fn(["warmup"])
+        logger.info("Vector store pre-warm complete.")
+    except Exception as e:
+        logger.warning(f"Startup warmup note: {e}")
+
+
 # Request Models
 class QueryRequest(BaseModel):
     query: str = Field(..., min_length=1, description="Question or search query")

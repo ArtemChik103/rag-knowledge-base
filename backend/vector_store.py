@@ -58,7 +58,8 @@ class MultilingualEmbeddingFunction(EmbeddingFunction[Documents]):
                     logger.info(f"Initializing ONNX Runtime with model: {onnx_file}")
                     sess_opts = ort.SessionOptions()
                     sess_opts.graph_optimization_level = ort.GraphOptimizationLevel.ORT_ENABLE_ALL
-                    sess_opts.intra_op_num_threads = min(2, os.cpu_count() or 1)
+                    sess_opts.intra_op_num_threads = 1
+                    sess_opts.inter_op_num_threads = 1
                     sess_opts.execution_mode = ort.ExecutionMode.ORT_SEQUENTIAL
                     
                     self._onnx_session = ort.InferenceSession(
@@ -72,6 +73,7 @@ class MultilingualEmbeddingFunction(EmbeddingFunction[Documents]):
                     return
                 except Exception as e:
                     logger.warning(f"Failed to load ONNX session from {onnx_file} ({e}), trying next.")
+
 
         # 2. Fall back to PyTorch SentenceTransformers with torch.inference_mode()
         try:
