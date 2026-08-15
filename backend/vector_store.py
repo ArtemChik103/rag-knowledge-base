@@ -64,7 +64,7 @@ class MultilingualEmbeddingFunction(EmbeddingFunction[Documents]):
                     
                     logger.info(f"Initializing ONNX Runtime with model: {onnx_file}")
                     sess_opts = ort.SessionOptions()
-                    sess_opts.graph_optimization_level = ort.GraphOptimizationLevel.ORT_ENABLE_ALL
+                    sess_opts.graph_optimization_level = ort.GraphOptimizationLevel.ORT_DISABLE_ALL
                     sess_opts.intra_op_num_threads = 1
                     sess_opts.inter_op_num_threads = 1
                     sess_opts.execution_mode = ort.ExecutionMode.ORT_SEQUENTIAL
@@ -74,6 +74,7 @@ class MultilingualEmbeddingFunction(EmbeddingFunction[Documents]):
                         sess_options=sess_opts,
                         providers=["CPUExecutionProvider"]
                     )
+
                     tok_src = str(tokenizer_dir) if tokenizer_dir.exists() else self.full_hf_name
                     self._tokenizer = AutoTokenizer.from_pretrained(tok_src, use_fast=True)
                     logger.info(f"ONNX Runtime embedding session ready ({onnx_file.name}).")
