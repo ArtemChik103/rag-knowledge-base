@@ -1,9 +1,17 @@
 import os
 import re
 from pathlib import Path
-from typing import List, Dict, Any
+from typing import List, Dict, Any, Optional
+from concurrent.futures import ThreadPoolExecutor
 from pydantic import BaseModel
-import pypdf
+
+# Try ultra-fast C-engine PyMuPDF first, fallback to pure-python pypdf
+try:
+    import fitz  # PyMuPDF
+    HAS_PYMUPDF = True
+except ImportError:
+    HAS_PYMUPDF = False
+    import pypdf
 
 class DocumentPage(BaseModel):
     page_number: int
@@ -21,7 +29,60 @@ class ParsedDocument(BaseModel):
 
 class DocumentParser:
     @staticmethod
-    def parse_pdf(file_path: Path | str, doc_id: str, filename: str) -> ParsedDocument:
+    def _extract_page_fitz(page_tuple) -> DocumentPage:
+        page_idx, page = page_tuple
+        # Extract text blocks directly from MuPDF C-engine (lossless, preserves exact paragraph structure)
+        blocks = page.get_text("blocks")
+        text_blocks = []
+        for b in blocks:
+            # b: (x0, y0, x1, y1, text, block_no, block_type) - block_type 0 is text
+            if len(b) >= 7 and b[6] == 0:
+                raw_block = b[4].strip()
+                # Normalize visual line wraps within the block to spaces
+                norm_block = " ".join(line.strip() for line in raw_block.splitlines() if line.strip())
+                if norm_block:
+                    text_blocks.append(norm_block)
+
+        page_text = "\n\n".join(text_blocks).strip()
+        return DocumentPage(
+            page_number=page_idx,
+            text=page_text,
+            char_count=len(page_text),
+        )
+
+    @staticmethod
+    def parse_pdf_pymupdf(file_path: Path | str, doc_id: str, filename: str) -> ParsedDocument:
+        doc = fitz.open(str(file_path))
+        total_pages = len(doc)
+
+        pages_with_idx = [(i + 1, doc[i]) for i in range(total_pages)]
+        
+        # Parallel extraction across pages for instant throughput
+        if total_pages > 4:
+            with ThreadPoolExecutor(max_workers=min(4, os.cpu_count() or 2)) as executor:
+                pages_data = list(executor.map(DocumentParser._extract_page_fitz, pages_with_idx))
+        else:
+            pages_data = [DocumentParser._extract_page_fitz(item) for item in pages_with_idx]
+
+        doc.close()
+
+        full_text_parts = [f"--- [Страница {p.page_number}] ---\n{p.text}" for p in pages_data if p.text]
+        raw_text = "\n\n".join(full_text_parts)
+        total_chars = sum(p.char_count for p in pages_data)
+
+        return ParsedDocument(
+            doc_id=doc_id,
+            filename=filename,
+            file_type="pdf",
+            total_pages=total_pages,
+            total_chars=total_chars,
+            pages=pages_data,
+            raw_text=raw_text,
+        )
+
+    @staticmethod
+    def parse_pdf_pypdf(file_path: Path | str, doc_id: str, filename: str) -> ParsedDocument:
+        import pypdf
         path = Path(file_path)
         pages_data: List[DocumentPage] = []
         full_text_parts: List[str] = []
@@ -33,7 +94,6 @@ class DocumentParser:
             page_text = page.extract_text() or ""
             lines = [line.strip() for line in page_text.splitlines() if line.strip()]
             
-            # Unwrap line wraps inside paragraphs while preserving bullet points, numbered clauses, and headers
             paragraphs: List[str] = []
             cur_p: List[str] = []
             
@@ -72,11 +132,19 @@ class DocumentParser:
         )
 
     @staticmethod
+    def parse_pdf(file_path: Path | str, doc_id: str, filename: str) -> ParsedDocument:
+        if HAS_PYMUPDF:
+            try:
+                return DocumentParser.parse_pdf_pymupdf(file_path, doc_id, filename)
+            except Exception:
+                return DocumentParser.parse_pdf_pypdf(file_path, doc_id, filename)
+        return DocumentParser.parse_pdf_pypdf(file_path, doc_id, filename)
+
+    @staticmethod
     def parse_text(file_path: Path | str, doc_id: str, filename: str, file_type: str = "txt") -> ParsedDocument:
         path = Path(file_path)
         content = path.read_text(encoding="utf-8", errors="replace")
         
-        # Clean lines
         lines = [line.rstrip() for line in content.splitlines()]
         cleaned_text = "\n".join(lines).strip()
         
