@@ -25,10 +25,12 @@ wheels/
 venv/
 ENV/
 
-# Vector DB & Storage
+# Vector DB & Storage & Local Models
 chroma_data/
 vector_db/
 uploaded_docs/
+models/
+*.onnx
 
 # Testing
 .pytest_cache/

@@ -2,6 +2,7 @@ import os
 import logging
 from pathlib import Path
 from typing import List, Dict, Any, Optional
+import numpy as np
 from pydantic import BaseModel
 import chromadb
 from chromadb import EmbeddingFunction, Documents, Embeddings
@@ -22,14 +23,16 @@ class SearchResult(BaseModel):
     distance: float # Raw distance (cosine distance)
 
 class MultilingualEmbeddingFunction(EmbeddingFunction[Documents]):
-    """High-performance embedding function with torch.inference_mode, LRU cache, and fallback."""
+    """High-performance embedding function combining ONNX Runtime, PyTorch inference_mode, and LRU Cache."""
     def __init__(self, model_name: str = settings.EMBEDDING_MODEL):
         self.model_name = model_name
-        self._model = None
+        self._onnx_session = None
+        self._tokenizer = None
+        self._torch_model = None
         self._fallback_mode = False
         self._cache: Dict[str, List[float]] = {}
-        self._max_cache_size = 2000
-        self._init_model()
+        self._max_cache_size = 2048
+        self._init_engine()
 
     def name(self) -> str:
         return f"multilingual_{self.model_name.replace('/', '_')}"
@@ -37,28 +40,62 @@ class MultilingualEmbeddingFunction(EmbeddingFunction[Documents]):
     def get_config(self) -> Dict[str, Any]:
         return {"model_name": self.model_name}
 
-    def _init_model(self):
+    def _init_engine(self):
+        onnx_file = settings.BASE_DIR / "models" / "model.onnx"
+        
+        # 1. Try ONNX Runtime first (Fastest C++ inference with ORT_ENABLE_ALL)
+        if onnx_file.exists():
+            try:
+                import onnxruntime as ort
+                from transformers import AutoTokenizer
+                
+                logger.info(f"Initializing ONNX Runtime with optimized model: {onnx_file}")
+                sess_opts = ort.SessionOptions()
+                sess_opts.graph_optimization_level = ort.GraphOptimizationLevel.ORT_ENABLE_ALL
+                sess_opts.intra_op_num_threads = min(4, os.cpu_count() or 2)
+                sess_opts.execution_mode = ort.ExecutionMode.ORT_SEQUENTIAL
+                
+                self._onnx_session = ort.InferenceSession(
+                    str(onnx_file),
+                    sess_options=sess_opts,
+                    providers=["CPUExecutionProvider"]
+                )
+                self._tokenizer = AutoTokenizer.from_pretrained(self.model_name, use_fast=True)
+                logger.info("ONNX Runtime embedding session ready.")
+                return
+            except Exception as e:
+                logger.warning(f"Failed to load ONNX model ({e}), falling back to PyTorch.")
+
+        # 2. Fall back to PyTorch SentenceTransformers with torch.inference_mode()
         try:
             import torch
             from sentence_transformers import SentenceTransformer
             
-            # Configure intra-op threads for optimal CPU SIMD (AVX-512 / AVX2)
+            # Configure CPU SIMD threads
             cpu_threads = min(4, os.cpu_count() or 2)
             torch.set_num_threads(cpu_threads)
 
-            logger.info(f"Loading embedding model: {self.model_name}")
-            self._model = SentenceTransformer(self.model_name)
-            self._model.eval()
-            logger.info("SentenceTransformer model loaded and optimized for fast inference.")
+            logger.info(f"Loading PyTorch embedding model: {self.model_name}")
+            self._torch_model = SentenceTransformer(self.model_name)
+            self._torch_model.eval()
+            logger.info("SentenceTransformer loaded with torch.inference_mode optimization.")
         except Exception as e:
             logger.warning(f"Could not load SentenceTransformer ({e}). Initializing dense TF-IDF cosine fallback.")
             self._fallback_mode = True
 
+    def _mean_pooling_numpy(self, last_hidden_state: np.ndarray, attention_mask: np.ndarray) -> np.ndarray:
+        input_mask_expanded = np.expand_dims(attention_mask, -1).astype(float)
+        sum_embeddings = np.sum(last_hidden_state * input_mask_expanded, axis=1)
+        sum_mask = np.clip(np.sum(input_mask_expanded, axis=1), a_min=1e-9, a_max=None)
+        unnorm = sum_embeddings / sum_mask
+        norms = np.linalg.norm(unnorm, axis=1, keepdims=True)
+        return unnorm / np.clip(norms, a_min=1e-9, a_max=None)
+
     def __call__(self, input: Documents) -> Embeddings:
         if not input:
             return []
-        
-        # 1. Check in-memory cache for instant O(1) retrieval
+
+        # 1. Instant O(1) in-memory LRU cache lookup
         cached_results: List[Optional[List[float]]] = [self._cache.get(t) for t in input]
         uncached_indices = [i for i, v in enumerate(cached_results) if v is None]
 
@@ -66,14 +103,43 @@ class MultilingualEmbeddingFunction(EmbeddingFunction[Documents]):
             return [cached_results[i] for i in range(len(input))]  # type: ignore
 
         uncached_texts = [input[i] for i in uncached_indices]
-
-        # 2. Compute embeddings with zero-overhead inference
         new_embeddings: List[List[float]] = []
-        if self._model is not None and not self._fallback_mode:
+
+        # 2. ONNX Runtime execution (if available)
+        if self._onnx_session is not None and self._tokenizer is not None:
+            try:
+                # Vectorized batch processing
+                batch_size = 32
+                for b_start in range(0, len(uncached_texts), batch_size):
+                    b_texts = uncached_texts[b_start : b_start + batch_size]
+                    encoded_inputs = self._tokenizer(
+                        b_texts,
+                        padding=True,
+                        truncation=True,
+                        max_length=256,
+                        return_tensors="np"
+                    )
+                    
+                    ort_inputs = {
+                        "input_ids": encoded_inputs["input_ids"],
+                        "attention_mask": encoded_inputs["attention_mask"],
+                    }
+                    if "token_type_ids" in encoded_inputs:
+                        ort_inputs["token_type_ids"] = encoded_inputs["token_type_ids"]
+
+                    outputs = self._onnx_session.run(None, ort_inputs)
+                    pooled = self._mean_pooling_numpy(outputs[0], encoded_inputs["attention_mask"])
+                    new_embeddings.extend([row.tolist() for row in pooled])
+            except Exception as e:
+                logger.error(f"ONNX inference error: {e}. Falling back to PyTorch.")
+                new_embeddings = []
+
+        # 3. PyTorch SentenceTransformers execution (if ONNX didn't run)
+        if not new_embeddings and self._torch_model is not None and not self._fallback_mode:
             try:
                 import torch
                 with torch.inference_mode():
-                    raw_emb = self._model.encode(
+                    raw_emb = self._torch_model.encode(
                         uncached_texts,
                         batch_size=32,
                         normalize_embeddings=True,
@@ -81,10 +147,10 @@ class MultilingualEmbeddingFunction(EmbeddingFunction[Documents]):
                     )
                     new_embeddings = [emb.tolist() for emb in raw_emb]
             except Exception as e:
-                logger.error(f"Inference error with SentenceTransformer: {e}. Using fallback.")
-        
+                logger.error(f"PyTorch inference error: {e}. Using deterministic dense fallback.")
+
+        # 4. Dense semantic fallback (if dependencies are unavailable)
         if not new_embeddings:
-            # Fallback dense n-gram calculation
             import math
             import hashlib
             dim = 384
@@ -105,9 +171,9 @@ class MultilingualEmbeddingFunction(EmbeddingFunction[Documents]):
                 norm = math.sqrt(sum(x * x for x in vec)) or 1.0
                 new_embeddings.append([x / norm for x in vec])
 
-        # 3. Store in LRU cache
+        # 5. Populate LRU cache
         if len(self._cache) > self._max_cache_size:
-            # Evict oldest entries
+            # Evict half of oldest cache entries
             self._cache = dict(list(self._cache.items())[self._max_cache_size // 2:])
 
         for idx, text, emb in zip(uncached_indices, uncached_texts, new_embeddings):
@@ -306,4 +372,5 @@ class VectorStore:
             "collection_name": self.collection_name,
             "embedding_model": self.embedding_fn.model_name,
             "is_fallback_embedding": self.embedding_fn._fallback_mode,
+            "engine": "ONNXRuntime" if self.embedding_fn._onnx_session else ("PyTorch" if self.embedding_fn._torch_model else "Fallback")
         }
