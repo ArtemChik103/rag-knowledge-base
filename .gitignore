@@ -29,8 +29,9 @@ ENV/
 chroma_data/
 vector_db/
 uploaded_docs/
-models/
-*.onnx
+models/model.onnx
+models/multilingual_model.onnx
+
 
 # Testing
 .pytest_cache/

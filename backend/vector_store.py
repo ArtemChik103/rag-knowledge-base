@@ -42,38 +42,43 @@ class MultilingualEmbeddingFunction(EmbeddingFunction[Documents]):
         return {"model_name": self.model_name}
 
     def _init_engine(self):
-
-        onnx_file = settings.BASE_DIR / "models" / "model.onnx"
+        onnx_candidates = [
+            settings.BASE_DIR / "models" / "model_quantized.onnx",
+            settings.BASE_DIR / "models" / "model.onnx",
+        ]
+        tokenizer_dir = settings.BASE_DIR / "models" / "tokenizer"
         
-        # 1. Try ONNX Runtime first (Fastest C++ inference with ORT_ENABLE_ALL)
-        if onnx_file.exists():
-            try:
-                import onnxruntime as ort
-                from transformers import AutoTokenizer
-                
-                logger.info(f"Initializing ONNX Runtime with model: {onnx_file}")
-                sess_opts = ort.SessionOptions()
-                sess_opts.graph_optimization_level = ort.GraphOptimizationLevel.ORT_ENABLE_ALL
-                sess_opts.intra_op_num_threads = min(4, os.cpu_count() or 2)
-                sess_opts.execution_mode = ort.ExecutionMode.ORT_SEQUENTIAL
-                
-                self._onnx_session = ort.InferenceSession(
-                    str(onnx_file),
-                    sess_options=sess_opts,
-                    providers=["CPUExecutionProvider"]
-                )
-                self._tokenizer = AutoTokenizer.from_pretrained(self.full_hf_name, use_fast=True)
-                logger.info("ONNX Runtime embedding session ready.")
-                return
-            except Exception as e:
-                logger.warning(f"Failed to load ONNX session ({e}), falling back to PyTorch.")
+        # 1. Try ONNX Runtime first (Fastest C++ inference, 20MB RAM, instant offline startup)
+        for onnx_file in onnx_candidates:
+            if onnx_file.exists():
+                try:
+                    import onnxruntime as ort
+                    from transformers import AutoTokenizer
+                    
+                    logger.info(f"Initializing ONNX Runtime with model: {onnx_file}")
+                    sess_opts = ort.SessionOptions()
+                    sess_opts.graph_optimization_level = ort.GraphOptimizationLevel.ORT_ENABLE_ALL
+                    sess_opts.intra_op_num_threads = min(2, os.cpu_count() or 1)
+                    sess_opts.execution_mode = ort.ExecutionMode.ORT_SEQUENTIAL
+                    
+                    self._onnx_session = ort.InferenceSession(
+                        str(onnx_file),
+                        sess_options=sess_opts,
+                        providers=["CPUExecutionProvider"]
+                    )
+                    tok_src = str(tokenizer_dir) if tokenizer_dir.exists() else self.full_hf_name
+                    self._tokenizer = AutoTokenizer.from_pretrained(tok_src, use_fast=True)
+                    logger.info(f"ONNX Runtime embedding session ready ({onnx_file.name}).")
+                    return
+                except Exception as e:
+                    logger.warning(f"Failed to load ONNX session from {onnx_file} ({e}), trying next.")
 
         # 2. Fall back to PyTorch SentenceTransformers with torch.inference_mode()
         try:
             import torch
             from sentence_transformers import SentenceTransformer
             
-            cpu_threads = min(4, os.cpu_count() or 2)
+            cpu_threads = min(2, os.cpu_count() or 1)
             torch.set_num_threads(cpu_threads)
 
             logger.info(f"Loading PyTorch embedding model: {self.model_name}")
@@ -83,6 +88,7 @@ class MultilingualEmbeddingFunction(EmbeddingFunction[Documents]):
         except Exception as e:
             logger.warning(f"Could not load SentenceTransformer ({e}). Initializing dense TF-IDF cosine fallback.")
             self._fallback_mode = True
+
 
     def _mean_pooling_numpy(self, last_hidden_state: np.ndarray, attention_mask: np.ndarray) -> np.ndarray:
         input_mask_expanded = np.expand_dims(attention_mask, -1).astype(float)
