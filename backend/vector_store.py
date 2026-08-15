@@ -200,11 +200,24 @@ class VectorStore:
         self._get_or_create_collection()
 
     def _get_or_create_collection(self):
-        self.collection = self.client.get_or_create_collection(
-            name=self.collection_name,
-            embedding_function=self.embedding_fn,
-            metadata={"hnsw:space": "cosine"}
-        )
+        try:
+            self.collection = self.client.get_or_create_collection(
+                name=self.collection_name,
+                embedding_function=self.embedding_fn,
+                metadata={"hnsw:space": "cosine"}
+            )
+        except Exception as e:
+            logger.warning(f"Collection mismatch or corruption ({e}), recreating clean collection.")
+            try:
+                self.client.delete_collection(self.collection_name)
+            except Exception:
+                pass
+            self.collection = self.client.get_or_create_collection(
+                name=self.collection_name,
+                embedding_function=self.embedding_fn,
+                metadata={"hnsw:space": "cosine"}
+            )
+
 
     def add_chunks(self, chunks: List[DocumentChunk]) -> int:
         if not chunks:

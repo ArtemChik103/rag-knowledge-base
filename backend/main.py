@@ -1,9 +1,13 @@
 import os
+import logging
 import shutil
 import time
 import mimetypes
 from pathlib import Path
 from typing import Optional, List, Dict, Any
+
+logger = logging.getLogger(__name__)
+
 
 # Ensure standard MIME types on all operating systems (Windows fix for module scripts)
 mimetypes.init()
