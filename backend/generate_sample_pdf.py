@@ -14,42 +14,53 @@ GLOBAL_FONT_BOLD = "Arial-Bold"
 def register_cyrillic_font():
     global GLOBAL_FONT_NAME, GLOBAL_FONT_BOLD
     font_candidates = [
+        # Windows paths
         ("Arial", r"C:\Windows\Fonts\arial.ttf"),
         ("Arial-Bold", r"C:\Windows\Fonts\arialbd.ttf"),
         ("Calibri", r"C:\Windows\Fonts\calibri.ttf"),
         ("SegoeUI", r"C:\Windows\Fonts\segoeui.ttf"),
+        # Linux / Debian / Ubuntu / Alpine paths
+        ("DejaVuSans", "/usr/share/fonts/truetype/dejavu/DejaVuSans.ttf"),
+        ("DejaVuSans-Bold", "/usr/share/fonts/truetype/dejavu/DejaVuSans-Bold.ttf"),
+        ("LiberationSans", "/usr/share/fonts/truetype/liberation/LiberationSans-Regular.ttf"),
+        ("LiberationSans-Bold", "/usr/share/fonts/truetype/liberation/LiberationSans-Bold.ttf"),
+        ("FreeSans", "/usr/share/fonts/truetype/freefont/FreeSans.ttf"),
     ]
     
-    font_name = "Arial"
-    font_bold = "Arial-Bold"
+    font_name = "Helvetica"
+    font_bold = "Helvetica-Bold"
 
     for name, path in font_candidates:
         if os.path.exists(path):
             try:
                 if name not in pdfmetrics.getRegisteredFontNames():
                     pdfmetrics.registerFont(TTFont(name, path))
-                if name == "Arial":
-                    font_name = "Arial"
-                elif name == "Arial-Bold":
-                    font_bold = "Arial-Bold"
+                if not name.endswith("-Bold") and font_name == "Helvetica":
+                    font_name = name
+                elif name.endswith("-Bold") and font_bold == "Helvetica-Bold":
+                    font_bold = name
             except Exception:
                 pass
 
-    if font_name not in pdfmetrics.getRegisteredFontNames():
-        import matplotlib
-        mpl_font = os.path.join(os.path.dirname(matplotlib.__file__), 'mpl-data', 'fonts', 'ttf', 'DejaVuSans.ttf')
-        mpl_font_bold = os.path.join(os.path.dirname(matplotlib.__file__), 'mpl-data', 'fonts', 'ttf', 'DejaVuSans-Bold.ttf')
-        if os.path.exists(mpl_font):
-            pdfmetrics.registerFont(TTFont("DejaVuSans", mpl_font))
-            font_name = "DejaVuSans"
-            font_bold = "DejaVuSans"
-            if os.path.exists(mpl_font_bold):
-                pdfmetrics.registerFont(TTFont("DejaVuSans-Bold", mpl_font_bold))
-                font_bold = "DejaVuSans-Bold"
+    if font_name == "Helvetica":
+        try:
+            import matplotlib
+            mpl_font = os.path.join(os.path.dirname(matplotlib.__file__), 'mpl-data', 'fonts', 'ttf', 'DejaVuSans.ttf')
+            mpl_font_bold = os.path.join(os.path.dirname(matplotlib.__file__), 'mpl-data', 'fonts', 'ttf', 'DejaVuSans-Bold.ttf')
+            if os.path.exists(mpl_font):
+                pdfmetrics.registerFont(TTFont("DejaVuSans", mpl_font))
+                font_name = "DejaVuSans"
+                font_bold = "DejaVuSans"
+                if os.path.exists(mpl_font_bold):
+                    pdfmetrics.registerFont(TTFont("DejaVuSans-Bold", mpl_font_bold))
+                    font_bold = "DejaVuSans-Bold"
+        except Exception:
+            pass
 
     GLOBAL_FONT_NAME = font_name
     GLOBAL_FONT_BOLD = font_bold
     return font_name, font_bold
+
 
 class NumberedCanvas(canvas.Canvas):
     def __init__(self, *args, **kwargs):

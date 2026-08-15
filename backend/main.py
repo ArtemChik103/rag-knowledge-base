@@ -127,18 +127,28 @@ def run_query(request: QueryRequest):
 
 @app.post("/api/sample-document")
 def create_and_index_sample():
-    sample_path = settings.UPLOAD_DIR / "sample_company_policy.pdf"
-    generate_company_policy_pdf(sample_path)
-    
-    ingestion_result = rag_engine.ingest_file(
-        file_path=sample_path,
-        original_filename="sample_company_policy.pdf"
-    )
-    
-    return {
-        "message": "Sample company policy PDF created and indexed successfully.",
-        "document": ingestion_result
-    }
+    try:
+        sample_path = settings.UPLOAD_DIR / "sample_company_policy.pdf"
+        root_sample = settings.BASE_DIR / "sample_company_policy.pdf"
+        
+        if root_sample.exists() and root_sample != sample_path:
+            shutil.copy(root_sample, sample_path)
+        elif not sample_path.exists():
+            generate_company_policy_pdf(sample_path)
+        
+        ingestion_result = rag_engine.ingest_file(
+            file_path=sample_path,
+            original_filename="sample_company_policy.pdf"
+        )
+        
+        return {
+            "message": "Sample company policy PDF created and indexed successfully.",
+            "document": ingestion_result
+        }
+    except Exception as e:
+        logger.error(f"Failed to create and index sample PDF: {e}")
+        raise HTTPException(status_code=500, detail=f"Failed to create sample document: {e}")
+
 
 @app.post("/api/reset")
 def reset_database():
