@@ -1,4 +1,10 @@
 import os
+os.environ["CUDA_VISIBLE_DEVICES"] = ""
+os.environ["ORT_DISABLE_TELEMETRY"] = "1"
+os.environ["OMP_NUM_THREADS"] = "1"
+os.environ["MKL_NUM_THREADS"] = "1"
+os.environ["TOKENIZERS_PARALLELISM"] = "false"
+
 import logging
 from pathlib import Path
 from typing import List, Dict, Any, Optional
@@ -11,6 +17,7 @@ from backend.config import settings
 from backend.text_splitter import DocumentChunk
 
 logger = logging.getLogger(__name__)
+
 
 class SearchResult(BaseModel):
     chunk_id: str
