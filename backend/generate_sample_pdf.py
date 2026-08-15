@@ -8,7 +8,11 @@ from reportlab.pdfgen import canvas
 from reportlab.pdfbase import pdfmetrics
 from reportlab.pdfbase.ttfonts import TTFont
 
+GLOBAL_FONT_NAME = "Arial"
+GLOBAL_FONT_BOLD = "Arial-Bold"
+
 def register_cyrillic_font():
+    global GLOBAL_FONT_NAME, GLOBAL_FONT_BOLD
     # Try Windows standard fonts
     font_candidates = [
         ("Arial", r"C:\Windows\Fonts\arial.ttf"),
@@ -17,13 +21,14 @@ def register_cyrillic_font():
         ("SegoeUI", r"C:\Windows\Fonts\segoeui.ttf"),
     ]
     
-    font_name = "Helvetica"
-    font_bold = "Helvetica-Bold"
+    font_name = "Arial"
+    font_bold = "Arial-Bold"
 
     for name, path in font_candidates:
         if os.path.exists(path):
             try:
-                pdfmetrics.registerFont(TTFont(name, path))
+                if name not in pdfmetrics.getRegisteredFontNames():
+                    pdfmetrics.registerFont(TTFont(name, path))
                 if name == "Arial":
                     font_name = "Arial"
                 elif name == "Arial-Bold":
@@ -31,19 +36,21 @@ def register_cyrillic_font():
             except Exception:
                 pass
 
-    if font_name != "Arial":
-        # Check DejaVu or other system fonts
-        for win_font in ["DejaVuSans.ttf", "arial.ttf"]:
-            full_path = os.path.join(os.environ.get("WINDIR", "C:\\Windows"), "Fonts", win_font)
-            if os.path.exists(full_path):
-                try:
-                    pdfmetrics.registerFont(TTFont("CustomCyrillic", full_path))
-                    font_name = "CustomCyrillic"
-                    font_bold = "CustomCyrillic"
-                    break
-                except Exception:
-                    pass
+    if font_name not in pdfmetrics.getRegisteredFontNames():
+        # Check system / matplotlib fallback
+        import matplotlib
+        mpl_font = os.path.join(os.path.dirname(matplotlib.__file__), 'mpl-data', 'fonts', 'ttf', 'DejaVuSans.ttf')
+        mpl_font_bold = os.path.join(os.path.dirname(matplotlib.__file__), 'mpl-data', 'fonts', 'ttf', 'DejaVuSans-Bold.ttf')
+        if os.path.exists(mpl_font):
+            pdfmetrics.registerFont(TTFont("DejaVuSans", mpl_font))
+            font_name = "DejaVuSans"
+            font_bold = "DejaVuSans"
+            if os.path.exists(mpl_font_bold):
+                pdfmetrics.registerFont(TTFont("DejaVuSans-Bold", mpl_font_bold))
+                font_bold = "DejaVuSans-Bold"
 
+    GLOBAL_FONT_NAME = font_name
+    GLOBAL_FONT_BOLD = font_bold
     return font_name, font_bold
 
 class NumberedCanvas(canvas.Canvas):
@@ -65,7 +72,9 @@ class NumberedCanvas(canvas.Canvas):
 
     def draw_page_decorations(self, page_count):
         self.saveState()
-        self.setFont("Helvetica", 9)
+        # Use registered Cyrillic font instead of Latin-only Helvetica
+        font_to_use = GLOBAL_FONT_NAME if GLOBAL_FONT_NAME in pdfmetrics.getRegisteredFontNames() else "Arial"
+        self.setFont(font_to_use, 8.5)
         self.setFillColor(colors.HexColor("#71717A"))
         
         # Header
