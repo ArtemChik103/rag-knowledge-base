@@ -13,7 +13,6 @@ GLOBAL_FONT_BOLD = "Arial-Bold"
 
 def register_cyrillic_font():
     global GLOBAL_FONT_NAME, GLOBAL_FONT_BOLD
-    # Try Windows standard fonts
     font_candidates = [
         ("Arial", r"C:\Windows\Fonts\arial.ttf"),
         ("Arial-Bold", r"C:\Windows\Fonts\arialbd.ttf"),
@@ -37,7 +36,6 @@ def register_cyrillic_font():
                 pass
 
     if font_name not in pdfmetrics.getRegisteredFontNames():
-        # Check system / matplotlib fallback
         import matplotlib
         mpl_font = os.path.join(os.path.dirname(matplotlib.__file__), 'mpl-data', 'fonts', 'ttf', 'DejaVuSans.ttf')
         mpl_font_bold = os.path.join(os.path.dirname(matplotlib.__file__), 'mpl-data', 'fonts', 'ttf', 'DejaVuSans-Bold.ttf')
@@ -72,20 +70,19 @@ class NumberedCanvas(canvas.Canvas):
 
     def draw_page_decorations(self, page_count):
         self.saveState()
-        # Use registered Cyrillic font instead of Latin-only Helvetica
         font_to_use = GLOBAL_FONT_NAME if GLOBAL_FONT_NAME in pdfmetrics.getRegisteredFontNames() else "Arial"
-        self.setFont(font_to_use, 8.5)
+        self.setFont(font_to_use, 8)
         self.setFillColor(colors.HexColor("#71717A"))
         
         # Header
-        self.drawString(54, 800, "ООО «ТехноИнновации» | Регламент трудового распорядка и ИБ")
+        self.drawString(54, 800, "ООО «ТехноИнновации» | Сводный корпоративный регламент и база знаний")
         self.setStrokeColor(colors.HexColor("#E4E4E7"))
         self.setLineWidth(0.5)
         self.line(54, 792, 541, 792)
 
         # Footer
         self.line(54, 45, 541, 45)
-        self.drawString(54, 32, "Конфиденциально • Внутренний нормативный документ • Версия 2.4")
+        self.drawString(54, 32, "Конфиденциально • Внутренний нормативный регламент • Версия 3.0 (2026)")
         self.drawRightString(541, 32, f"Стр. {self._pageNumber} из {page_count}")
         self.restoreState()
 
@@ -108,74 +105,73 @@ def generate_company_policy_pdf(output_path: Path | str = "sample_company_policy
     title_style = ParagraphStyle(
         "DocTitle",
         parent=styles["Heading1"],
-        fontName=font_bold if font_bold in pdfmetrics.getRegisteredFontNames() else font_name,
-        fontSize=18,
-        leading=22,
+        fontName=font_bold,
+        fontSize=16,
+        leading=20,
         textColor=colors.HexColor("#09090B"),
-        alignment=0, # Left aligned
-        spaceAfter=12,
+        spaceAfter=8,
     )
 
     subtitle_style = ParagraphStyle(
         "DocSubTitle",
         parent=styles["Normal"],
         fontName=font_name,
-        fontSize=10,
-        leading=14,
+        fontSize=9.5,
+        leading=13,
         textColor=colors.HexColor("#52525B"),
-        spaceAfter=18,
+        spaceAfter=14,
     )
 
     h1_style = ParagraphStyle(
         "SectionHeading",
         parent=styles["Heading2"],
-        fontName=font_bold if font_bold in pdfmetrics.getRegisteredFontNames() else font_name,
-        fontSize=13,
-        leading=17,
+        fontName=font_bold,
+        fontSize=12,
+        leading=16,
         textColor=colors.HexColor("#18181B"),
-        spaceBefore=14,
-        spaceAfter=8,
+        spaceBefore=12,
+        spaceAfter=6,
     )
 
     h2_style = ParagraphStyle(
         "SubSectionHeading",
         parent=styles["Heading3"],
-        fontName=font_bold if font_bold in pdfmetrics.getRegisteredFontNames() else font_name,
-        fontSize=11,
-        leading=15,
+        fontName=font_bold,
+        fontSize=10,
+        leading=14,
         textColor=colors.HexColor("#27272A"),
-        spaceBefore=10,
-        spaceAfter=6,
+        spaceBefore=8,
+        spaceAfter=4,
     )
 
     body_style = ParagraphStyle(
         "DocBody",
         parent=styles["Normal"],
         fontName=font_name,
-        fontSize=9.5,
-        leading=14,
+        fontSize=9,
+        leading=13.5,
         textColor=colors.HexColor("#3F3F46"),
-        spaceAfter=6,
+        spaceAfter=5,
     )
 
     bullet_style = ParagraphStyle(
         "DocBullet",
         parent=styles["Normal"],
         fontName=font_name,
-        fontSize=9.5,
-        leading=14,
+        fontSize=9,
+        leading=13.5,
         textColor=colors.HexColor("#3F3F46"),
-        leftIndent=14,
-        firstLineIndent=-10,
-        spaceAfter=4,
+        leftIndent=12,
+        firstLineIndent=-8,
+        spaceAfter=3,
     )
 
     table_header_style = ParagraphStyle(
         "TableHeader",
         parent=styles["Normal"],
-        fontName=font_bold if font_bold in pdfmetrics.getRegisteredFontNames() else font_name,
-        fontSize=9,
-        leading=12,
+        fontName=font_bold,
+        fontSize=8.5,
+        leading=11,
         textColor=colors.HexColor("#09090B"),
     )
 
@@ -183,119 +179,196 @@ def generate_company_policy_pdf(output_path: Path | str = "sample_company_policy
         "TableCell",
         parent=styles["Normal"],
         fontName=font_name,
-        fontSize=8.5,
-        leading=12,
+        fontSize=8,
+        leading=11,
         textColor=colors.HexColor("#27272A"),
     )
 
     story = []
 
     # Title Block
-    story.append(Paragraph("РЕГЛАМЕНТ ВНУТРЕННЕГО ТРУДОВОГО РАСПОРЯДКА, ИНФОРМАЦИОННОЙ БЕЗОПАСНОСТИ И СОЦИАЛЬНЫХ ГАРАНТИЙ", title_style))
-    story.append(Paragraph("ООО «ТехноИнновации» • Утвержден приказом Генерального директора № 142/ОД от 15 января 2026 г.", subtitle_style))
-    story.append(HRFlowable(width="100%", thickness=1, color=colors.HexColor("#D4D4D8"), spaceAfter=14))
+    story.append(Paragraph("СВОДНЫЙ КОРПОРАТИВНЫЙ РЕГЛАМЕНТ, ПРАВИЛА ВНУТРЕННЕГО ТРУДОВОГО РАСПОРЯДКА И ПОЛИТИКИ БЕЗОПАСНОСТИ", title_style))
+    story.append(Paragraph("ООО «ТехноИнновации» • Утвержден приказом Генерального директора № 142/ОД от 15 января 2026 г. • Редакция 3.0", subtitle_style))
+    story.append(HRFlowable(width="100%", thickness=1, color=colors.HexColor("#D4D4D8"), spaceAfter=10))
 
     # SECTION 1
-    story.append(Paragraph("Раздел 1. График работы, учет рабочего времени и дисциплина", h1_style))
-    story.append(Paragraph("1.1. В компании ООО «ТехноИнновации» установлена 40-часовая пятидневная рабочая неделя с двумя выходными днями (суббота и воскресенье).", body_style))
-    story.append(Paragraph("1.2. Базовый рабочий график: начало рабочего дня в 09:00, окончание в 18:00 (в пятницу — до 17:00). Обеденный перерыв составляет 60 минут в промежутке с 13:00 до 14:00. Время обеденного перерыва не включается в рабочее время.", body_style))
-    story.append(Paragraph("1.3. Гибкий график: Сотрудники по предварительному согласованию с непосредственным руководителем могут сдвигать начало рабочего дня в интервале от 08:00 до 11:00 при условии отработки суммарно 8 рабочих часов в день.", body_style))
-    story.append(Paragraph("1.4. Опоздания и отсутствие: О любом опоздании или вынужденном отсутствии сотрудник обязан проинформировать руководителя и HR-отдел не позднее 09:30 утра по электронной почте или в корпоративном мессенджере.", body_style))
-
-    story.append(Spacer(1, 10))
+    story.append(Paragraph("Раздел 1. Общие положения, термины и принципы компании", h1_style))
+    story.append(Paragraph("1.1. Настоящий Регламент является локальным нормативным актом ООО «ТехноИнновации» (далее — «Компания») и регулирует трудовые отношения, права и обязанности сотрудников, порядок организации рабочих процессов, политики информационной безопасности, компенсации и социальные гарантии.", body_style))
+    story.append(Paragraph("1.2. Действие настоящего регламента распространяется на всех штатных сотрудников, стажеров, совместителей и работников на дистанционном режиме с момента подписания трудового договора.", body_style))
+    story.append(Paragraph("1.3. Основные ценности Компании: открытость информации, ответственность за результат, инженерное качество, взаимное уважение и соблюдение требований кибербезопасности.", body_style))
 
     # SECTION 2
-    story.append(Paragraph("Раздел 2. Порядок удаленной и гибридной работы", h1_style))
-    story.append(Paragraph("2.1. Право на гибридный или полностью удаленный формат работы предоставляется сотрудникам после успешного прохождения испытательного срока.", body_style))
-    story.append(Paragraph("2.2. Заявка на удаленную работу оформляется во внутренней системе Jira Service Desk не менее чем за 2 рабочих дня до планируемой даты.", body_style))
-    story.append(Paragraph("2.3. Требования к удаленному рабочему месту:", h2_style))
-    story.append(Paragraph("• Наличие стабильного интернет-канала с пропускной способностью не менее 50 Мбит/с.", bullet_style))
-    story.append(Paragraph("• Обязательное подключение к корпоративной сети исключительно через корпоративный VPN (WireGuard / OpenVPN с двухфакторной аутентификацией 2FA).", bullet_style))
-    story.append(Paragraph("• Доступность в корпоративном чате Slack и электронной почте в течение всего рабочего дня с 10:00 до 19:00 по московскому времени.", bullet_style))
-    story.append(Paragraph("• Запрещается выполнять рабочие обязанности в публичных незащищенных сетях Wi-Fi (кафе, коворкинги) без активного VPN.", bullet_style))
+    story.append(Paragraph("Раздел 2. График работы, гибкие часы и сверхурочная работа", h1_style))
+    story.append(Paragraph("2.1. Базовый режим: В Компании установлена 40-часовая пятидневная рабочая неделя (понедельник–пятница) с двумя выходными днями (суббота и воскресенье).", body_style))
+    story.append(Paragraph("2.2. Время работы: Стандартный рабочий день длится с 09:00 до 18:00 (в пятницу — сокращенный день до 17:00). Обеденный перерыв составляет ровно 60 минут в окне с 13:00 до 14:00. Обеденное время не оплачивается и не включается в рабочее время.", body_style))
+    story.append(Paragraph("2.3. Гибкий график: Сотрудники IT-подразделений, аналитики и дизайнеры имеют право сдвигать начало рабочего дня в промежутке от 08:00 до 11:00 по согласованию с тимлидом при сохранении 8-часового рабочего дня.", body_style))
+    story.append(Paragraph("2.4. Сверхурочная работа: Привлечение к работе сверх установленной продолжительности допускается только с письменного согласия сотрудника и оплачивается: первые 2 часа — в полуторном размере (1.5x), последующие часы и работа в выходные дни — в двойном размере (2.0x).", body_style))
+    story.append(Paragraph("2.5. Учет опозданий: Обо всех задержках более чем на 15 минут сотрудник обязан уведомить руководителя и дежурного HR в корпоративном чате Slack (#attendance) не позднее 09:30 утра.", body_style))
 
     story.append(PageBreak())
 
     # SECTION 3
-    story.append(Paragraph("Раздел 3. Информационная безопасность и защита конфиденциальных данных", h1_style))
-    story.append(Paragraph("3.1. Парольная политика: Пароли к учетным записям должны содержать не менее 12 символов, включая заглавные и строчные буквы, цифры и специальные символы. Срок действия пароля составляет 90 дней, после чего система требует обязательную смену пароля. Повторное использование последних 5 паролей запрещено.", body_style))
-    story.append(Paragraph("3.2. Использование съемных носителей: Категорически запрещается подключать к корпоративным ноутбукам и серверам неавторизованные личные USB-накопители, внешние жесткие диски и смартфоны в режиме передачи данных. Все USB-порты на рабочих станциях подлежат централизованному аудиту DLP-системой.", body_style))
-    story.append(Paragraph("3.3. Передача конфиденциальной информации: Запрещается передавать исходный код, клиентские базы данных, финансовую отчетность и персональные данные сотрудников через публичные файлообменники, личные почтовые ящики (@gmail.com, @mail.ru, @yandex.ru) или сторонние мессенджеры.", body_style))
-    story.append(Paragraph("3.4. Блокировка экрана: При оставлении рабочего места даже на короткое время сотрудник обязан заблокировать экран компьютера комбинацией клавиш Win + L (или Cmd + Ctrl + Q для macOS).", body_style))
+    story.append(Paragraph("Раздел 3. Удаленный, гибридный и разъездной формат работы", h1_style))
+    story.append(Paragraph("3.1. Категории форматов работы: В Компании предусмотрены три формата: Офисный (5 дней в офисе), Гибридный (от 1 до 3 дней удаленно в неделю) и Полностью удаленный (Full Remote).", body_style))
+    story.append(Paragraph("3.2. Условия перехода на удаленный режим: Право на гибридный или удаленный формат предоставляется сотрудникам после успешного прохождения 3 месяцев испытательного срока.", body_style))
+    story.append(Paragraph("3.3. Регламент подачи заявки: Заявка на удаленный день оформляется во внутренней системе Jira Service Desk (проект HR-REMOTE) не менее чем за 2 рабочих дня до планируемой даты.", body_style))
+    story.append(Paragraph("3.4. Требования к домашнему рабочему месту и сетевой инфраструктуре:", h2_style))
+    story.append(Paragraph("• Скорость интернет-соединения: не менее 50 Мбит/с на входящий и исходящий трафик.", bullet_style))
+    story.append(Paragraph("• Сетевая безопасность: обязательное использование корпоративного VPN-клиента (WireGuard с обязательной двухфакторной аутентификацией 2FA) при любом подключении к корпоративным серверам, базам данных и Git-репозиториям.", bullet_style))
+    story.append(Paragraph("• Рабочие часы доступности: сотрудник обязан находиться на связи в корпоративных мессенджерах и по электронной почте с 10:00 до 19:00 по московскому времени.", bullet_style))
+    story.append(Paragraph("• Запрет работы из незащищенных сетей: категорически запрещено выполнять служебные обязанности в общедоступных сетях Wi-Fi (кафе, аэропорты, отели) без включенного VPN и шифрования трафика.", bullet_style))
+    story.append(Paragraph("• Работа из-за рубежа: временное выполнение работы за пределами РФ допускается на срок до 90 календарных дней в году при согласовании с директором по безопасности и налоговым отделом.", body_style))
 
-    story.append(Spacer(1, 10))
+    story.append(Spacer(1, 8))
 
     # SECTION 4
-    story.append(Paragraph("Раздел 4. Социальный пакет, компенсации и корпоративное обучение", h1_style))
-    story.append(Paragraph("4.1. Добровольное медицинское страхование (ДМС): Полис ДМС с расширенным покрытием, включая экстренную помощь и стоматологию, оформляется каждому сотруднику после прохождения 3 месяцев испытательного срока за счет средств компании.", body_style))
-    story.append(Paragraph("4.2. Бюджет на спорт и оздоровление: Компания компенсирует расходы на абонементы в фитнес-клубы, бассейны и спортивные секции в размере до 35 000 рублей в год на одного сотрудника. Выплаты производятся раз в полгода на основании чеков и договоров.", body_style))
-    story.append(Paragraph("4.3. Обучение и сертификация: Ежегодный бюджет на профессиональное развитие составляет до 80 000 рублей на каждого штатного сотрудника. Бюджет может быть израсходован на профильные курсы, участие в конференциях и сдачу сертификационных экзаменов.", body_style))
-    story.append(Paragraph("4.4. Изучение иностранных языков: Компания предоставляет бесплатный корпоративный доступ к платформе изучения английского языка для всех сотрудников уровня Middle и выше.", body_style))
+    story.append(Paragraph("Раздел 4. Информационная безопасность, пароли и защита коммерческой тайны", h1_style))
+    story.append(Paragraph("4.1. Парольная политика и учетные записи:", h2_style))
+    story.append(Paragraph("• Длина пароля: минимальная длина мастер-пароля составляет 12 символов.", bullet_style))
+    story.append(Paragraph("• Сложность: пароль обязан содержать прописные и строчные латинские буквы, минимум 2 цифры и минимум 1 специальный символ (!@#$%^&*).", bullet_style))
+    story.append(Paragraph("• Срок ротации: система автоматически запрашивает смену пароля каждые 90 календарных дней. Запрещено повторное использование последних 5 паролей.", bullet_style))
+    story.append(Paragraph("• Блокировка: при 5 неверных попытках ввода пароля учетная запись Active Directory блокируется на 30 минут с отправкой алерта в SOC (Security Operations Center).", bullet_style))
+    story.append(Paragraph("4.2. Использование съемных накопителей (USB и внешние диски): Запрещено подключение любых неавторизованных USB-накопителей, SD-карт и мобильных телефонов в режиме накопителя. На всех корпоративных ПК действует система DLP (Data Loss Prevention), блокирующая запись на внешние устройства.", body_style))
+    story.append(Paragraph("4.3. Обработка конфиденциальной информации и исходного кода: Запрещено копировать, пересылать или публиковать конфиденциальные документы Компании, клиентские базы данных, исходный код и финансовую отчетность через сторонние мессенджеры (Telegram, WhatsApp) или личную почту (@gmail.com, @mail.ru, @yandex.ru).", body_style))
+    story.append(Paragraph("4.4. Политика «Чистого стола» и блокировка экрана: При покидании рабочего места сотрудник обязан заблокировать экран комбинацией клавиш Win + L (Cmd + Ctrl + Q для macOS). Не допускается оставлять на столе документы с грифом «Коммерческая тайна».", body_style))
 
-    story.append(Spacer(1, 10))
+    story.append(PageBreak())
 
-    # TABLE: Summary of Benefits
-    story.append(Paragraph("Таблица льгот и компенсаций для сотрудников:", h2_style))
+    # SECTION 5
+    story.append(Paragraph("Раздел 5. Использование корпоративного оборудования, ноутбуков и ПО", h1_style))
+    story.append(Paragraph("5.1. Выдача техники: Каждому сотруднику при выходе на работу предоставляется ноутбук корпоративного стандарта (MacBook Pro / ThinkPad), гарнитура, зарядные устройства и авторизованный токен безопасности 2FA.", body_style))
+    story.append(Paragraph("5.2. Установка программного обеспечения: Установка стороннего нелицензионного ПО, торрент-клиентов, криптомайнеров и компьютерных игр на рабочие станции строго запрещена. Запросы на установку платного ПО формируются через портал Helpdesk.", body_style))
+    story.append(Paragraph("5.3. Возврат оборудования: При увольнении или замене техники сотрудник обязан сдать оборудование в отдел IT-инфраструктуры в полной комплектации и рабочем состоянии в последний рабочий день.", body_style))
+
+    story.append(Spacer(1, 8))
+
+    # SECTION 6
+    story.append(Paragraph("Раздел 6. Оплата труда, структура заработной платы и премирование", h1_style))
+    story.append(Paragraph("6.1. Дни выплаты заработной платы: Заработная плата выплачивается 2 раза в месяц в безналичном порядке на банковскую карту сотрудника: аванс — 20-го числа текущего месяца (40% от оклада), окончательный расчет — 5-го числа следующего месяца (60% от оклада).", body_style))
+    story.append(Paragraph("6.2. Квартальные премии (KPI): По результатам выполнения квартальных ключевых показателей сотрудникам выплачивается квартальная премия в размере до 30% от квартального фонда оплаты труда на основании решения руководителя подразделения.", body_style))
+    story.append(Paragraph("6.3. Ежегодный пересмотр заработных плат (Performance Review): Оценка результативности и пересмотр уровня оплаты труда проводятся ежегодно в ноябре–декабре с вступлением новых условий в силу с 1 января.", body_style))
+
+    story.append(Spacer(1, 8))
+
+    # SECTION 7
+    story.append(Paragraph("Раздел 7. Социальный пакет, ДМС, спорт и корпоративные компенсации", h1_style))
+    story.append(Paragraph("7.1. Добровольное медицинское страхование (ДМС): Программа ДМС оформляется для сотрудника за счет Компании после прохождения 3 месяцев испытательного срока. Полис включает поликлиническое обслуживание, вызов врача на дом, экстренную госпитализацию и стоматологию.", body_style))
+    story.append(Paragraph("7.2. Компенсация спорта и фитнеса: Компания возмещает расходы на абонементы в спортзалы, фитнес-клубы, бассейны и секции в размере до 35 000 рублей в год на одного сотрудника. Выплата производится раз в полгода на основании чеков и договора.", body_style))
+    story.append(Paragraph("7.3. Компенсация питания: Сотрудникам офиса предоставляется ежемесячная дотация на питание в корпоративной столовой и кафе-партнерах в размере 6 000 рублей в месяц через карту питания.", body_style))
+    story.append(Paragraph("7.4. Корпоративная мобильная связь: Сотрудникам, чьи обязанности связаны с регулярными внешними коммуникациями, предоставляется корпоративная SIM-карта с безлимитным интернетом и пакетом 2000 минут.", body_style))
+
+    story.append(PageBreak())
+
+    # SECTION 8
+    story.append(Paragraph("Раздел 8. Профессиональное развитие, обучение и сертификация", h1_style))
+    story.append(Paragraph("8.1. Бюджет на обучение: Каждому штатному сотруднику после 6 месяцев работы выделяется ежегодный бюджет на профессиональное обучение в размере до 80 000 рублей. Средства могут быть направлены на курсы, участие в конференциях и покупку литературы.", body_style))
+    story.append(Paragraph("8.2. Оплата профессиональной сертификации: Компания на 100% компенсирует стоимость сдачи международных и отраслевых сертификационных экзаменов (AWS, GCP, CISA, PMP, Kubernetes CKA) при условии успешной сдачи экзамена.", body_style))
+    story.append(Paragraph("8.3. Изучение английского языка: Всем сотрудникам уровня Middle и выше предоставляется бесплатный доступ к онлайн-платформе корпоративного изучения английского языка с индивидуальными занятиями с преподавателем 2 раза в неделю.", body_style))
+
+    story.append(Spacer(1, 8))
+
+    # TABLE: Complete Benefits Matrix
+    story.append(Paragraph("Сводная таблица льгот, лимитов и компенсаций:", h2_style))
     table_data = [
         [
-            Paragraph("Вид компенсации", table_header_style),
-            Paragraph("Лимит / Условие", table_header_style),
-            Paragraph("Срок активации", table_header_style),
-            Paragraph("Документы для выплаты", table_header_style),
+            Paragraph("Льгота / Компенсация", table_header_style),
+            Paragraph("Годовой лимит", table_header_style),
+            Paragraph("Срок доступности", table_header_style),
+            Paragraph("Необходимые документы", table_header_style),
         ],
         [
             Paragraph("Полис ДМС + Стоматология", table_cell_style),
-            Paragraph("100% покрытие компанией", table_cell_style),
-            Paragraph("После 3 месяцев работы", table_cell_style),
+            Paragraph("100% покрытие", table_cell_style),
+            Paragraph("После 3 мес. работы", table_cell_style),
             Paragraph("Заявление в HR-портале", table_cell_style),
         ],
         [
             Paragraph("Спорт и фитнес", table_cell_style),
             Paragraph("До 35 000 руб./год", table_cell_style),
             Paragraph("С первого месяца", table_cell_style),
-            Paragraph("Кассовые чеки, договор", table_cell_style),
+            Paragraph("Договор, чек об оплате", table_cell_style),
         ],
         [
             Paragraph("Обучение и конференции", table_cell_style),
             Paragraph("До 80 000 руб./год", table_cell_style),
-            Paragraph("После 6 месяцев работы", table_cell_style),
-            Paragraph("Согласование тимлида, счет", table_cell_style),
+            Paragraph("После 6 мес. работы", table_cell_style),
+            Paragraph("План развития, счет", table_cell_style),
         ],
         [
-            Paragraph("Изучение английского языка", table_cell_style),
-            Paragraph("Бесплатный корпоративный доступ", table_cell_style),
+            Paragraph("Питание в офисе", table_cell_style),
+            Paragraph("72 000 руб./год (6к/мес)", table_cell_style),
             Paragraph("С первого месяца", table_cell_style),
-            Paragraph("Автоматически через HR", table_cell_style),
+            Paragraph("Автоматически на бейдж", table_cell_style),
+        ],
+        [
+            Paragraph("Английский язык", table_cell_style),
+            Paragraph("Бесплатно без лимита", table_cell_style),
+            Paragraph("После 3 мес. работы", table_cell_style),
+            Paragraph("Тестирование уровня", table_cell_style),
+        ],
+        [
+            Paragraph("Обустройство рабочего места", table_cell_style),
+            Paragraph("До 25 000 руб. (разово)", table_cell_style),
+            Paragraph("Для Full Remote", table_cell_style),
+            Paragraph("Чеки на кресло/монитор", table_cell_style),
         ]
     ]
 
-    t = Table(table_data, colWidths=[130, 120, 110, 127])
+    t = Table(table_data, colWidths=[130, 115, 115, 127])
     t.setStyle(TableStyle([
         ('BACKGROUND', (0, 0), (-1, 0), colors.HexColor("#F4F4F5")),
         ('GRID', (0, 0), (-1, -1), 0.5, colors.HexColor("#E4E4E7")),
-        ('TOPPADDING', (0, 0), (-1, -1), 5),
-        ('BOTTOMPADDING', (0, 0), (-1, -1), 5),
+        ('TOPPADDING', (0, 0), (-1, -1), 4.5),
+        ('BOTTOMPADDING', (0, 0), (-1, -1), 4.5),
         ('VALIGN', (0, 0), (-1, -1), 'TOP'),
     ]))
     story.append(t)
 
     story.append(PageBreak())
 
-    # SECTION 5
-    story.append(Paragraph("Раздел 5. Порядок предоставления отпусков и оформления больничных листов", h1_style))
-    story.append(Paragraph("5.1. Ежегодный основной оплачиваемый отпуск составляет 28 календарных дней. Отпуск может быть разделен на части, при этом хотя бы одна из частей должна быть не менее 14 календарных дней.", body_style))
-    story.append(Paragraph("5.2. График отпусков утверждается ежегодно до 1 декабря на следующий календарный год. Изменение дат отпуска допускается по согласованию с руководителем не позднее чем за 14 дней до начала отпуска.", body_style))
-    story.append(Paragraph("5.3. Больничные листы: При наступлении временной нетрудоспособности сотрудник обязан проинформировать тимлида до 10:00 утра первого дня болезни. Электронный листок нетрудоспособности (ЭЛН) передается в бухгалтерию не позднее 3 дней с момента закрытия больничного.", body_style))
-    story.append(Paragraph("5.4. Дополнительные оплачиваемые дни (Day Off): Компания предоставляет до 3 оплачиваемых дней в год без оформления официального больничного листа в случае внезапного легкого недомогания («Day-off»).", body_style))
+    # SECTION 9
+    story.append(Paragraph("Раздел 9. Отпуска, больничные листы и дни Day-off", h1_style))
+    story.append(Paragraph("9.1. Основной оплачиваемый отпуск: Составляет 28 календарных дней за каждый рабочий год. Отпуск может делиться на части, при этом продолжительность хотя бы одной из частей должна составлять не менее 14 календарных дней непрерывно.", body_style))
+    story.append(Paragraph("9.2. График отпусков: Формируется и утверждается ежегодно до 1 декабря на предстоящий календарный год. Перенос отпуска возможен по согласованию с тимлидом не позднее чем за 14 дней до утвержденной даты.", body_style))
+    story.append(Paragraph("9.3. Оформление больничных листов: При наступлении временной нетрудоспособности сотрудник обязан проинформировать руководителя до 10:00 утра первого дня болезни. Номер электронного листка нетрудоспособности (ЭЛН) направляется в бухгалтерию не позднее 3 дней после закрытия.", body_style))
+    story.append(Paragraph("9.4. Программа дополнительных дней отдыха (Day-off): Компания предоставляет каждому сотруднику до 3 оплачиваемых дней в календарном году без необходимости оформления больничного листа в случае внезапного легкого недомогания или экстренных семейных обстоятельств.", body_style))
 
-    story.append(Spacer(1, 10))
+    story.append(Spacer(1, 8))
 
-    # SECTION 6
-    story.append(Paragraph("Раздел 6. Контакты ответственных подразделений и эскалация", h1_style))
-    story.append(Paragraph("• Отдел кадров и HR-сопровождение: hr@technoinnovations.ru, внутренний телефон 101, кабинет 304.", bullet_style))
-    story.append(Paragraph("• Служба информационной безопасности (SOC): sec@technoinnovations.ru, горячая линия 112 (круглосуточно).", bullet_style))
-    story.append(Paragraph("• Бухгалтерия и расчет зарплаты: payroll@technoinnovations.ru, внутренний телефон 105.", bullet_style))
-    story.append(Paragraph("• Техническая поддержка и Helpdesk: support@technoinnovations.ru, портал https://helpdesk.technoinnovations.corp", bullet_style))
+    # SECTION 10
+    story.append(Paragraph("Раздел 10. Служебные командировки и авансовые отчеты", h1_style))
+    story.append(Paragraph("10.1. Направление в командировку: Оформляется служебным заданием и приказом за подписью директора. Все расходы на проезд, проживание и суточные покрываются Компанией в полном объеме.", body_style))
+    story.append(Paragraph("10.2. Размер суточных: По территории РФ — 2 500 рублей в сутки; для заграничных командировок — 70 долларов США / евро в сутки по курсу ЦБ РФ.", body_style))
+    story.append(Paragraph("10.3. Проживание и транспорт: Бронирование гостиниц осуществляется по стандарту до 6 500 рублей в сутки в регионах и до 9 000 рублей в Москве и Санкт-Петербурге. Авиаперелеты бронируются эконом-классом, ж/д поездки — купе.", body_style))
+    story.append(Paragraph("10.4. Сроки предоставления авансового отчета: В течение 3 рабочих дней после возвращения из командировки сотрудник обязан предоставить в бухгалтерию авансовый отчет с оригиналами посадочных талонов, чеков и счетов из гостиницы.", body_style))
+
+    story.append(Spacer(1, 8))
+
+    # SECTION 11
+    story.append(Paragraph("Раздел 11. Корпоративная этика, дресс-код и урегулирование споров", h1_style))
+    story.append(Paragraph("11.1. Стиль одежды (дресс-код): В Компании принят свободный стиль одежды (Smart Casual / Casual). При проведении очных официальных встреч с клиентами и инвесторами рекомендуется деловой стиль (Business Casual).", body_style))
+    story.append(Paragraph("11.2. Недискриминация и инклюзивность: В Компании строго запрещены любые формы дискриминации по признакам пола, возраста, национальности, вероисповедания или убеждений. Все сотрудники имеют равные возможности карьерного роста.", body_style))
+    story.append(Paragraph("11.3. Разрешение конфликтных ситуаций: Любой рабочий конфликт подлежит первоначальному обсуждению с непосредственным руководителем. При невозможности урегулирования привлекается HR Business Partner или служба медиации.", body_style))
+
+    story.append(PageBreak())
+
+    # SECTION 12
+    story.append(Paragraph("Раздел 12. Охрана труда, пожарная безопасность и действия в ЧС", h1_style))
+    story.append(Paragraph("12.1. Вводный инструктаж: Каждый сотрудник при приеме на работу проходит обязательный вводный инструктаж по охране труда и пожарной безопасности под роспись в журнале учета.", body_style))
+    story.append(Paragraph("12.2. Пожарная безопасность: Курение (включая электронные сигареты и вейпы) на территории офиса категорически запрещено и разрешается только в специально оборудованных уличных зонах. В случае срабатывания пожарной сигнализации сотрудники обязаны немедленно покинуть здание по эвакуационным лестницам.", body_style))
+    story.append(Paragraph("12.3. Медицинская аптечка: Аптечки первой помощи расположены на каждом этаже офиса возле кухонных зон и на ресепшн (кабинеты 201, 301, 401).", body_style))
+
+    story.append(Spacer(1, 8))
+
+    # SECTION 13
+    story.append(Paragraph("Раздел 13. Контактная информация подразделений и матрица эскалации", h1_style))
+    story.append(Paragraph("• Отдел подбора и адаптации персонала: hr@technoinnovations.ru | Внутренний номер: 101 | Кабинет 304", bullet_style))
+    story.append(Paragraph("• HR Business Partner: hrbp@technoinnovations.ru | Внутренний номер: 102 | Кабинет 305", bullet_style))
+    story.append(Paragraph("• Служба информационной безопасности (SOC): sec@technoinnovations.ru | Круглосуточный телефон: 112 / +7 (495) 100-01-12", bullet_style))
+    story.append(Paragraph("• Бухгалтерия и расчетный отдел: payroll@technoinnovations.ru | Внутренний номер: 105 | Кабинет 208", bullet_style))
+    story.append(Paragraph("• Служба технической поддержки (Helpdesk): support@technoinnovations.ru | Портал: https://helpdesk.technoinnovations.corp", bullet_style))
+    story.append(Paragraph("• Административно-хозяйственный отдел (АХО): facility@technoinnovations.ru | Внутренний номер: 110", bullet_style))
+    story.append(Paragraph("• Горячая линия комплаенс и этики: ethics@technoinnovations.ru | Анонимный ящик доверия на 1 этаже", bullet_style))
 
     doc.build(story, canvasmaker=NumberedCanvas)
     return out_file
