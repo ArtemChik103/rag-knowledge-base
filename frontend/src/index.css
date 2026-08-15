@@ -16,7 +16,7 @@
   }
 }
 
-/* Custom scrollbar */
+/* Custom scrollbar for general panels */
 ::-webkit-scrollbar {
   width: 6px;
   height: 6px;
@@ -33,6 +33,16 @@
 
 ::-webkit-scrollbar-thumb:hover {
   background: #3f3f46;
+}
+
+/* Hide scrollbar utility for chips and horizontal strips */
+.no-scrollbar {
+  -ms-overflow-style: none;
+  scrollbar-width: none;
+}
+
+.no-scrollbar::-webkit-scrollbar {
+  display: none;
 }
 
 /* Utility Animations */

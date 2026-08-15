@@ -36,6 +36,12 @@ class RAGEngine:
         )
 
     def ingest_file(self, file_path: Path | str, original_filename: str, doc_id: Optional[str] = None) -> Dict[str, Any]:
+        # Deduplicate: if a document with the exact same filename already exists, remove previous version first
+        existing_docs = self.vector_store.list_documents()
+        for d in existing_docs:
+            if d.get("filename") == original_filename:
+                self.vector_store.delete_document(d["doc_id"])
+
         doc_id = doc_id or str(uuid.uuid4())
         
         # 1. Parse document
