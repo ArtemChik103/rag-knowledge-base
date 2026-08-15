@@ -1,4 +1,5 @@
 import os
+import re
 from pathlib import Path
 from typing import List, Dict, Any
 from pydantic import BaseModel
@@ -30,9 +31,22 @@ class DocumentParser:
 
         for idx, page in enumerate(reader.pages, start=1):
             page_text = page.extract_text() or ""
-            # Clean and normalize excessive whitespace while preserving structure
             lines = [line.strip() for line in page_text.splitlines() if line.strip()]
-            cleaned_text = "\n".join(lines)
+            
+            # Unwrap line wraps inside paragraphs while preserving bullet points, numbered clauses, and headers
+            paragraphs: List[str] = []
+            cur_p: List[str] = []
+            
+            for line in lines:
+                is_new_section = bool(re.match(r"^(\d+\.\d+\.|\•|Раздел|ООО|\#|\-|\*|[A-ZА-ЯЁ\d\.\s]{4,}:)", line))
+                if is_new_section and cur_p:
+                    paragraphs.append(" ".join(cur_p))
+                    cur_p = []
+                cur_p.append(line)
+            if cur_p:
+                paragraphs.append(" ".join(cur_p))
+
+            cleaned_text = "\n\n".join(paragraphs).strip()
             
             pages_data.append(
                 DocumentPage(
@@ -92,5 +106,4 @@ class DocumentParser:
         elif ext in [".txt", ".md", ".markdown", ".json", ".csv"]:
             return cls.parse_text(path, doc_id, original_filename, file_type=ext.lstrip("."))
         else:
-            # Fallback to plain text
             return cls.parse_text(path, doc_id, original_filename, file_type=ext.lstrip(".") or "unknown")

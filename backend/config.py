@@ -11,8 +11,8 @@ class Settings(BaseSettings):
     # Vector store & embeddings
     COLLECTION_NAME: str = "knowledge_base"
     EMBEDDING_MODEL: str = "paraphrase-multilingual-MiniLM-L12-v2"
-    CHUNK_SIZE: int = 500
-    CHUNK_OVERLAP: int = 100
+    CHUNK_SIZE: int = 750
+    CHUNK_OVERLAP: int = 120
     TOP_K: int = 4
     SIMILARITY_THRESHOLD: float = 0.20
 

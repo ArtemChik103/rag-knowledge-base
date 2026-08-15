@@ -81,9 +81,10 @@ class RAGEngine:
             system_prompt = (
                 "Ты — экспертная поисковая система по корпоративной базе знаний и регламентам. "
                 "Отвечай на вопрос пользователя исключительно на основе приведенного контекста. "
-                "Ответ должен быть точным, структурированным, кратким и не содержать выдуманных фактов. "
+                "Ответ должен быть точным, структурированным, исчерпывающим и не содержать выдуманных фактов. "
+                "Обязательно указывай точные цифры, временные рамки (например, часы обеда, график работы), размеры компенсаций и условия, упомянутые в тексте. "
                 "Если в контексте нет ответа на вопрос, прямо напиши: 'В предоставленных документах нет информации по данному вопросу.' "
-                "Обязательно ссылайся на номера страниц и названия регламентов при наличии."
+                "Обязательно ссылайся на номера страниц при наличии."
             )
 
             user_prompt = f"Контекст из базы знаний:\n{context_text}\n\nВопрос пользователя: {query}\n\nОтвет:"
@@ -98,77 +99,86 @@ class RAGEngine:
                 max_tokens=800,
             )
             return response.choices[0].message.content.strip()
-        except Exception as e:
-            # Fall back to local grounded synthesizer
+        except Exception:
             return None
 
     def _generate_grounded_local_answer(self, query: str, context_chunks: List[SearchResult]) -> str:
-        """Deterministic, grounded local answer extraction from top retrieved chunks."""
+        """Coherent, entity-aware grounded answer synthesis from top retrieved chunks."""
         if not context_chunks:
-            return "В базе знаний нет релевантных документов для ответа на этот вопрос. Пожалуйста, загрузите документ (например, регламент компании) для выполнения поиска."
+            return "В базе знаний нет релевантных документов для ответа на этот вопрос. Пожалуйста, загрузите документ для выполнения поиска."
 
-        # Extract keywords from query
         clean_q = re.sub(r"[^\w\sа-яА-ЯёЁ]", " ", query.lower())
         stopwords = {
             "каков", "какой", "какая", "какие", "каком", "что", "где", "когда", "кто", "чем",
             "как", "почему", "зачем", "сколько", "ли", "или", "для", "при", "по", "из", "на", "в",
-            "о", "об", "обо", "под", "над", "от", "до", "без", "после", "есть", "быть", "ли", "это"
+            "о", "об", "обо", "под", "над", "от", "до", "без", "после", "есть", "быть", "это", "его", "ее"
         }
         query_terms = [w for w in clean_q.split() if len(w) > 2 and w not in stopwords]
 
-        # Extract and rank sentences from all retrieved chunks
-        scored_sentences = []
+        candidate_blocks = []
+        seen_texts = set()
+
         for chunk in context_chunks:
-            # Split into sentences
-            raw_sents = re.split(r"(?<=[.!?])\s+", chunk.text)
-            for s in raw_sents:
-                clean_s = s.strip()
-                if len(clean_s) < 15:
+            # Segment chunk text into logical paragraphs and bullet points
+            raw_lines = [l.strip() for l in chunk.text.split("\n") if l.strip()]
+            blocks = []
+            
+            for line in raw_lines:
+                # Split multiple numbered points if they are in the same line
+                sub_points = re.split(r"(?=(?:^|\s)(?:\d+\.\d+\.|\•)\s+)", line)
+                for sp in sub_points:
+                    clean_sp = sp.strip()
+                    if len(clean_sp) >= 20:
+                        blocks.append(clean_sp)
+
+            for b in blocks:
+                norm_b = re.sub(r"\s+", " ", b).strip()
+                if norm_b in seen_texts:
                     continue
-                s_lower = clean_s.lower()
+                seen_texts.add(norm_b)
+
+                b_lower = norm_b.lower()
                 
-                # Match query terms
-                matches = sum(1 for t in query_terms if t in s_lower or any(t[:4] in w for w in s_lower.split()))
-                if matches > 0 or len(scored_sentences) < 3:
-                    score = (matches * 2.0) + chunk.score
-                    scored_sentences.append({
-                        "sentence": clean_s,
+                # Count matching query terms
+                matches = sum(1 for t in query_terms if t in b_lower or any(t[:4] in w for w in b_lower.split()))
+                
+                # Bonus for exact key factual patterns (time ranges, numbers, currency, durations)
+                has_time_or_num = bool(re.search(r"\d{1,2}:\d{2}|\d+\s*(?:руб|мин|час|дн|%|Мбит|Гб|мес|лет|\$|€)", b_lower))
+                fact_bonus = 3.0 if has_time_or_num else 0.0
+
+                score = (matches * 3.5) + fact_bonus + (chunk.score * 2.0)
+                if matches > 0 or chunk == context_chunks[0]:
+                    candidate_blocks.append({
+                        "text": norm_b,
                         "score": score,
+                        "matches": matches,
                         "page": chunk.page_number,
                         "filename": chunk.filename
                     })
 
-        # Sort sentences by match score
-        scored_sentences.sort(key=lambda x: x["score"], reverse=True)
+        # Rank candidates by relevance
+        candidate_blocks.sort(key=lambda x: x["score"], reverse=True)
 
-        if not scored_sentences:
-            # Fallback to presenting top chunk text
+        if not candidate_blocks:
             top_chunk = context_chunks[0]
-            page_info = f" (стр. {top_chunk.page_number})" if top_chunk.page_number else ""
-            return f"Согласно документу «{top_chunk.filename}»{page_info}:\n\n{top_chunk.text}"
+            return f"Согласно документу «{top_chunk.filename}»:\n\n{top_chunk.text}"
 
-        # Group top 3-4 distinct sentences
+        # Select top complementary blocks (up to 3) without duplicate prefixes
         selected = []
-        seen = set()
-        for item in scored_sentences:
-            st = item["sentence"]
-            if st not in seen:
-                seen.add(st)
-                selected.append(item)
-                if len(selected) >= 3:
-                    break
+        for cb in candidate_blocks:
+            if any(cb["text"][:35] in s["text"] or s["text"][:35] in cb["text"] for s in selected):
+                continue
+            selected.append(cb)
+            if len(selected) >= 3:
+                break
 
         top_chunk = context_chunks[0]
-        page_info = f" (стр. {top_chunk.page_number})" if top_chunk.page_number else ""
-        
-        answer_parts = []
-        answer_parts.append(f"На основе анализа базы знаний («{top_chunk.filename}»{page_info}):\n")
-        
+        lines = [f"На основе базы знаний («{top_chunk.filename}»):\n"]
         for item in selected:
             p_str = f" [Стр. {item['page']}]" if item['page'] else ""
-            answer_parts.append(f"• {item['sentence']}{p_str}")
+            lines.append(f"• {item['text']}{p_str}")
 
-        return "\n".join(answer_parts)
+        return "\n".join(lines)
 
     def query(self, query_text: str, top_k: int = settings.TOP_K, doc_id: Optional[str] = None) -> QueryResponse:
         start_total = time.perf_counter()
@@ -181,7 +191,6 @@ class RAGEngine:
         # Filter by threshold if we have results
         valid_chunks = [c for c in retrieved_chunks if c.score >= settings.SIMILARITY_THRESHOLD]
         if not valid_chunks and retrieved_chunks:
-            # Keep top 1 if confidence is marginally below threshold
             if retrieved_chunks[0].score >= 0.15:
                 valid_chunks = [retrieved_chunks[0]]
 
