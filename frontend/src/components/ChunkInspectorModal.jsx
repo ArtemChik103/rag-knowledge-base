@@ -30,7 +30,7 @@ export function ChunkInspectorModal({ doc, onClose }) {
   return (
     <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/70 backdrop-blur-sm animate-fade-in">
       <div className="relative w-full max-w-3xl max-h-[85vh] rounded-xl bg-zinc-950 border border-zinc-800 shadow-2xl flex flex-col overflow-hidden">
-        {/* Modal Header */}
+        {/* Шапка модального окна */}
         <div className="flex items-center justify-between px-5 py-4 border-b border-zinc-800 bg-zinc-900/50">
           <div className="flex items-center space-x-2.5 min-w-0 pr-4">
             <Layers className="h-4 w-4 text-brand-400 shrink-0" />
@@ -52,7 +52,7 @@ export function ChunkInspectorModal({ doc, onClose }) {
           </button>
         </div>
 
-        {/* Modal Body */}
+        {/* Тело модального окна */}
         <div className="flex-1 overflow-y-auto p-5 space-y-3">
           {loading && (
             <div className="py-12 flex flex-col items-center justify-center space-y-2 text-zinc-400">
@@ -89,7 +89,7 @@ export function ChunkInspectorModal({ doc, onClose }) {
           ))}
         </div>
 
-        {/* Modal Footer */}
+        {/* Подвал модального окна */}
         <div className="px-5 py-3 border-t border-zinc-800 bg-zinc-900/40 flex justify-end">
           <button
             onClick={onClose}

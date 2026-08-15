@@ -21,7 +21,7 @@ def test_recursive_splitter(tmp_path: Path):
     assert len(chunks) > 1
     assert all(c.doc_id == "doc-split" for c in chunks)
     assert all(c.filename == "long_doc.txt" for c in chunks)
-    assert all(c.char_count <= 150 for c in chunks) # allow slight margin for clean boundary
+    assert all(c.char_count <= 150 for c in chunks) # допустимый запас для сохранения границы слова
     assert chunks[0].page_number == 1
 
 def test_invalid_overlap_raises():

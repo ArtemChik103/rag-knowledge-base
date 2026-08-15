@@ -19,30 +19,30 @@ def test_stats_endpoint():
     assert "total_documents" in data
 
 def test_sample_document_and_query_flow():
-    # 1. Reset DB
+    # 1. Сброс базы данных
     res_reset = client.post("/api/reset")
     assert res_reset.status_code == 200
 
-    # 2. Generate and index sample document
+    # 2. Генерация и индексация тестового регламента
     res_sample = client.post("/api/sample-document")
     assert res_sample.status_code == 200
     doc_info = res_sample.json()["document"]
     assert doc_info["filename"] == "sample_company_policy.pdf"
     assert doc_info["total_chunks"] > 0
 
-    # 3. List documents
+    # 3. Получение списка документов
     res_docs = client.get("/api/documents")
     assert res_docs.status_code == 200
     docs = res_docs.json()
     assert len(docs) >= 1
     doc_id = docs[0]["doc_id"]
 
-    # 4. Get chunks
+    # 4. Проверка чанков документа
     res_chunks = client.get(f"/api/documents/{doc_id}/chunks")
     assert res_chunks.status_code == 200
     assert len(res_chunks.json()) > 0
 
-    # 5. Query: "Какой график работы компании?"
+    # 5. Поисковый запрос: график работы
     res_query = client.post(
         "/api/query",
         json={"query": "Какой график работы установлен в компании и со скольки до скольки обед?", "top_k": 3}
@@ -54,7 +54,7 @@ def test_sample_document_and_query_flow():
     assert q_data["confidence_score"] > 0
     assert "09:00" in q_data["answer"] or "18:00" in q_data["answer"] or "обед" in q_data["answer"].lower() or len(q_data["citations"]) > 0
 
-    # 6. Query: "Какова компенсация на спорт?"
+    # 6. Поисковый запрос: компенсация на спорт
     res_query2 = client.post(
         "/api/query",
         json={"query": "Каков размер компенсации расходов на спорт и фитнес?", "top_k": 3}

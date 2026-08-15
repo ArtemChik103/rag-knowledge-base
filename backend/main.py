@@ -9,7 +9,7 @@ from typing import Optional, List, Dict, Any
 logger = logging.getLogger(__name__)
 
 
-# Ensure standard MIME types on all operating systems (Windows fix for module scripts)
+# Регистрация стандартных MIME-типов для всех операционных систем (корректная раздача ES-модулей в Windows)
 mimetypes.init()
 mimetypes.add_type("application/javascript", ".js")
 mimetypes.add_type("application/javascript", ".mjs")
@@ -29,11 +29,11 @@ from backend.generate_sample_pdf import generate_company_policy_pdf
 
 app = FastAPI(
     title="RAG Knowledge Base API",
-    description="Vector search & Q&A service over corporate documents and regulations",
+    description="Сервис векторного поиска и генерации ответов по корпоративным документам и регламентам",
     version="1.0.0",
 )
 
-# CORS Middleware
+# Настройка CORS
 app.add_middleware(
     CORSMiddleware,
     allow_origins=["*"],
@@ -42,17 +42,15 @@ app.add_middleware(
     allow_headers=["*"],
 )
 
-# Initialize vector store & RAG engine
+# Инициализация векторного хранилища и RAG-движка
 vector_store = VectorStore()
 rag_engine = RAGEngine(vector_store=vector_store)
 
-
-
-# Request Models
+# Модели запросов и ответов
 class QueryRequest(BaseModel):
-    query: str = Field(..., min_length=1, description="Question or search query")
+    query: str = Field(..., min_length=1, description="Поисковый запрос или вопрос")
     top_k: Optional[int] = Field(default=settings.TOP_K, ge=1, le=20)
-    doc_id: Optional[str] = Field(default=None, description="Optional document ID filter")
+    doc_id: Optional[str] = Field(default=None, description="Опциональный фильтр по ID документа")
 
 class DocumentSummary(BaseModel):
     doc_id: str
@@ -164,7 +162,7 @@ def reset_database():
         raise HTTPException(status_code=500, detail="Failed to reset vector database.")
     return {"message": "Vector database reset successfully."}
 
-# Mount static frontend
+# Раздача статики собранного фронтенда
 frontend_dist = settings.BASE_DIR / "frontend" / "dist"
 if frontend_dist.exists() and (frontend_dist / "index.html").exists():
     app.mount("/assets", StaticFiles(directory=str(frontend_dist / "assets"), html=False), name="static_assets")

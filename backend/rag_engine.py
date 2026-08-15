@@ -44,7 +44,7 @@ def extract_meaningful_stems(query: str) -> List[str]:
         if len(st) >= 3:
             stems.append(st)
             
-    # Filter generic domain words if more specific intent keywords exist
+    # Фильтрация общих доменных слов, если в запросе есть более специфичные ключевые слова
     specific_stems = [s for s in stems if s not in DOMAIN_FILLER_STEMS]
     return specific_stems if specific_stems else stems
 
@@ -135,7 +135,7 @@ class RAGEngine:
             return None
 
     def _generate_grounded_local_answer(self, query: str, context_chunks: List[SearchResult]) -> str:
-        """Precision, intent-focused grounded answer synthesis from top retrieved chunks."""
+        """Синтез точного, фактологически выверенного ответа на основе лучших найденных фрагментов."""
         if not context_chunks:
             return "В базе знаний нет релевантных документов для ответа на этот вопрос. Пожалуйста, загрузите документ для выполнения поиска."
 
@@ -164,7 +164,7 @@ class RAGEngine:
                 b_words = [w for w in re.findall(r"[a-zA-Zа-яА-ЯёЁ0-9]+", norm_b.lower()) if len(w) >= 3 and w not in RUSSIAN_STOPWORDS]
                 b_stems = set(russian_stem(w) for w in b_words if len(russian_stem(w)) >= 3)
                 
-                # Robust morphological stem match
+                # Морфологическое сопоставление стеммов
                 stem_matches = 0
                 for qs in query_stems:
                     for bs in b_stems:
@@ -188,18 +188,18 @@ class RAGEngine:
                     "filename": chunk.filename
                 })
 
-        # Strict intent filter: if any blocks match query keywords, exclude non-matching noise
+        # Строгий фильтр интента: если есть блоки со совпадением ключевых слов запроса, исключаем нерелевантный шум
         if query_stems and any(cb["matches"] > 0 for cb in candidate_blocks):
             candidate_blocks = [cb for cb in candidate_blocks if cb["matches"] > 0]
 
-        # Rank candidates by relevance score
+        # Ранжирование кандидатов по оценке релевантности
         candidate_blocks.sort(key=lambda x: x["score"], reverse=True)
 
         if not candidate_blocks:
             top_chunk = context_chunks[0]
             return f"Согласно документу «{top_chunk.filename}»:\n\n{top_chunk.text}"
 
-        # Select top complementary blocks (up to 3) matching user intent
+        # Выбор лучших дополняющих блоков (до 3) под интент пользователя
         selected = []
         for cb in candidate_blocks:
             if any(cb["text"][:35] in s["text"] or s["text"][:35] in cb["text"] for s in selected):
@@ -219,7 +219,7 @@ class RAGEngine:
     def query(self, query_text: str, top_k: int = settings.TOP_K, doc_id: Optional[str] = None) -> QueryResponse:
         start_total = time.perf_counter()
         
-        # 1. Retrieval with hybrid re-ranking
+        # 1. Поиск с гибридным переранжированием
         start_retrieval = time.perf_counter()
         query_stems = extract_meaningful_stems(query_text)
         
@@ -248,13 +248,13 @@ class RAGEngine:
         
         retrieval_time_ms = (time.perf_counter() - start_retrieval) * 1000.0
 
-        # Filter by threshold if we have results
+        # Фильтрация по порогу сходства
         valid_chunks = [c for c in retrieved_chunks if c.score >= settings.SIMILARITY_THRESHOLD]
         if not valid_chunks and retrieved_chunks:
             if retrieved_chunks[0].score >= 0.15:
                 valid_chunks = [retrieved_chunks[0]]
 
-        # 2. Generation / Synthesis
+        # 2. Генерация / Синтез ответа
         start_generation = time.perf_counter()
         if not valid_chunks:
             answer = "По вашему запросу в загруженных документах не найдено релевантной информации. Попробуйте уточнить формулировку или загрузить регламент."

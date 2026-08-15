@@ -14,12 +14,12 @@ GLOBAL_FONT_BOLD = "Arial-Bold"
 def register_cyrillic_font():
     global GLOBAL_FONT_NAME, GLOBAL_FONT_BOLD
     font_candidates = [
-        # Windows paths
+        # Шрифты Windows
         ("Arial", r"C:\Windows\Fonts\arial.ttf"),
         ("Arial-Bold", r"C:\Windows\Fonts\arialbd.ttf"),
         ("Calibri", r"C:\Windows\Fonts\calibri.ttf"),
         ("SegoeUI", r"C:\Windows\Fonts\segoeui.ttf"),
-        # Linux / Debian / Ubuntu / Alpine paths
+        # Шрифты Linux / Debian / Ubuntu / Alpine
         ("DejaVuSans", "/usr/share/fonts/truetype/dejavu/DejaVuSans.ttf"),
         ("DejaVuSans-Bold", "/usr/share/fonts/truetype/dejavu/DejaVuSans-Bold.ttf"),
         ("LiberationSans", "/usr/share/fonts/truetype/liberation/LiberationSans-Regular.ttf"),
@@ -85,13 +85,13 @@ class NumberedCanvas(canvas.Canvas):
         self.setFont(font_to_use, 8)
         self.setFillColor(colors.HexColor("#71717A"))
         
-        # Header
+        # Верхний колонтитул
         self.drawString(54, 800, "ООО «ТехноИнновации» | Сводный корпоративный регламент и база знаний")
         self.setStrokeColor(colors.HexColor("#E4E4E7"))
         self.setLineWidth(0.5)
         self.line(54, 792, 541, 792)
 
-        # Footer
+        # Нижний колонтитул
         self.line(54, 45, 541, 45)
         self.drawString(54, 32, "Конфиденциально • Внутренний нормативный регламент • Версия 3.0 (2026)")
         self.drawRightString(541, 32, f"Стр. {self._pageNumber} из {page_count}")
@@ -197,18 +197,18 @@ def generate_company_policy_pdf(output_path: Path | str = "sample_company_policy
 
     story = []
 
-    # Title Block
+    # Блок заголовка
     story.append(Paragraph("СВОДНЫЙ КОРПОРАТИВНЫЙ РЕГЛАМЕНТ, ПРАВИЛА ВНУТРЕННЕГО ТРУДОВОГО РАСПОРЯДКА И ПОЛИТИКИ БЕЗОПАСНОСТИ", title_style))
     story.append(Paragraph("ООО «ТехноИнновации» • Утвержден приказом Генерального директора № 142/ОД от 15 января 2026 г. • Редакция 3.0", subtitle_style))
     story.append(HRFlowable(width="100%", thickness=1, color=colors.HexColor("#D4D4D8"), spaceAfter=10))
 
-    # SECTION 1
+    # РАЗДЕЛ 1
     story.append(Paragraph("Раздел 1. Общие положения, термины и принципы компании", h1_style))
     story.append(Paragraph("1.1. Настоящий Регламент является локальным нормативным актом ООО «ТехноИнновации» (далее — «Компания») и регулирует трудовые отношения, права и обязанности сотрудников, порядок организации рабочих процессов, политики информационной безопасности, компенсации и социальные гарантии.", body_style))
     story.append(Paragraph("1.2. Действие настоящего регламента распространяется на всех штатных сотрудников, стажеров, совместителей и работников на дистанционном режиме с момента подписания трудового договора.", body_style))
     story.append(Paragraph("1.3. Основные ценности Компании: открытость информации, ответственность за результат, инженерное качество, взаимное уважение и соблюдение требований кибербезопасности.", body_style))
 
-    # SECTION 2
+    # РАЗДЕЛ 2
     story.append(Paragraph("Раздел 2. График работы, гибкие часы и сверхурочная работа", h1_style))
     story.append(Paragraph("2.1. Базовый режим: В Компании установлена 40-часовая пятидневная рабочая неделя (понедельник–пятница) с двумя выходными днями (суббота и воскресенье).", body_style))
     story.append(Paragraph("2.2. Время работы: Стандартный рабочий день длится с 09:00 до 18:00 (в пятницу — сокращенный день до 17:00). Обеденный перерыв составляет ровно 60 минут в окне с 13:00 до 14:00. Обеденное время не оплачивается и не включается в рабочее время.", body_style))
@@ -218,7 +218,7 @@ def generate_company_policy_pdf(output_path: Path | str = "sample_company_policy
 
     story.append(PageBreak())
 
-    # SECTION 3
+    # РАЗДЕЛ 3
     story.append(Paragraph("Раздел 3. Удаленный, гибридный и разъездной формат работы", h1_style))
     story.append(Paragraph("3.1. Категории форматов работы: В Компании предусмотрены три формата: Офисный (5 дней в офисе), Гибридный (от 1 до 3 дней удаленно в неделю) и Полностью удаленный (Full Remote).", body_style))
     story.append(Paragraph("3.2. Условия перехода на удаленный режим: Право на гибридный или удаленный формат предоставляется сотрудникам после успешного прохождения 3 месяцев испытательного срока.", body_style))
@@ -232,7 +232,7 @@ def generate_company_policy_pdf(output_path: Path | str = "sample_company_policy
 
     story.append(Spacer(1, 8))
 
-    # SECTION 4
+    # РАЗДЕЛ 4
     story.append(Paragraph("Раздел 4. Информационная безопасность, пароли и защита коммерческой тайны", h1_style))
     story.append(Paragraph("4.1. Парольная политика и учетные записи:", h2_style))
     story.append(Paragraph("• Длина пароля: минимальная длина мастер-пароля составляет 12 символов.", bullet_style))
@@ -245,7 +245,7 @@ def generate_company_policy_pdf(output_path: Path | str = "sample_company_policy
 
     story.append(PageBreak())
 
-    # SECTION 5
+    # РАЗДЕЛ 5
     story.append(Paragraph("Раздел 5. Использование корпоративного оборудования, ноутбуков и ПО", h1_style))
     story.append(Paragraph("5.1. Выдача техники: Каждому сотруднику при выходе на работу предоставляется ноутбук корпоративного стандарта (MacBook Pro / ThinkPad), гарнитура, зарядные устройства и авторизованный токен безопасности 2FA.", body_style))
     story.append(Paragraph("5.2. Установка программного обеспечения: Установка стороннего нелицензионного ПО, торрент-клиентов, криптомайнеров и компьютерных игр на рабочие станции строго запрещена. Запросы на установку платного ПО формируются через портал Helpdesk.", body_style))
@@ -253,7 +253,7 @@ def generate_company_policy_pdf(output_path: Path | str = "sample_company_policy
 
     story.append(Spacer(1, 8))
 
-    # SECTION 6
+    # РАЗДЕЛ 6
     story.append(Paragraph("Раздел 6. Оплата труда, структура заработной платы и премирование", h1_style))
     story.append(Paragraph("6.1. Дни выплаты заработной платы: Заработная плата выплачивается 2 раза в месяц в безналичном порядке на банковскую карту сотрудника: аванс — 20-го числа текущего месяца (40% от оклада), окончательный расчет — 5-го числа следующего месяца (60% от оклада).", body_style))
     story.append(Paragraph("6.2. Квартальные премии (KPI): По результатам выполнения квартальных ключевых показателей сотрудникам выплачивается квартальная премия в размере до 30% от квартального фонда оплаты труда на основании решения руководителя подразделения.", body_style))
@@ -261,7 +261,7 @@ def generate_company_policy_pdf(output_path: Path | str = "sample_company_policy
 
     story.append(Spacer(1, 8))
 
-    # SECTION 7
+    # РАЗДЕЛ 7
     story.append(Paragraph("Раздел 7. Социальный пакет, ДМС, спорт и корпоративные компенсации", h1_style))
     story.append(Paragraph("7.1. Добровольное медицинское страхование (ДМС): Программа ДМС оформляется для сотрудника за счет Компании после прохождения 3 месяцев испытательного срока. Полис включает поликлиническое обслуживание, вызов врача на дом, экстренную госпитализацию и стоматологию.", body_style))
     story.append(Paragraph("7.2. Компенсация спорта и фитнеса: Компания возмещает расходы на абонементы в спортзалы, фитнес-клубы, бассейны и секции в размере до 35 000 рублей в год на одного сотрудника. Выплата производится раз в полгода на основании чеков и договора.", body_style))
@@ -270,7 +270,7 @@ def generate_company_policy_pdf(output_path: Path | str = "sample_company_policy
 
     story.append(PageBreak())
 
-    # SECTION 8
+    # РАЗДЕЛ 8
     story.append(Paragraph("Раздел 8. Профессиональное развитие, обучение и сертификация", h1_style))
     story.append(Paragraph("8.1. Бюджет на обучение: Каждому штатному сотруднику после 6 месяцев работы выделяется ежегодный бюджет на профессиональное обучение в размере до 80 000 рублей. Средства могут быть направлены на курсы, участие в конференциях и покупку литературы.", body_style))
     story.append(Paragraph("8.2. Оплата профессиональной сертификации: Компания на 100% компенсирует стоимость сдачи международных и отраслевых сертификационных экзаменов (AWS, GCP, CISA, PMP, Kubernetes CKA) при условии успешной сдачи экзамена.", body_style))
@@ -278,7 +278,7 @@ def generate_company_policy_pdf(output_path: Path | str = "sample_company_policy
 
     story.append(Spacer(1, 8))
 
-    # TABLE: Complete Benefits Matrix
+    # ТАБЛИЦА: Сводная матрица корпоративных льгот и компенсаций
     story.append(Paragraph("Сводная таблица льгот, лимитов и компенсаций:", h2_style))
     table_data = [
         [
@@ -337,7 +337,7 @@ def generate_company_policy_pdf(output_path: Path | str = "sample_company_policy
 
     story.append(PageBreak())
 
-    # SECTION 9
+    # РАЗДЕЛ 9
     story.append(Paragraph("Раздел 9. Отпуска, больничные листы и дни Day-off", h1_style))
     story.append(Paragraph("9.1. Основной оплачиваемый отпуск: Составляет 28 календарных дней за каждый рабочий год. Отпуск может делиться на части, при этом продолжительность хотя бы одной из частей должна составлять не менее 14 календарных дней непрерывно.", body_style))
     story.append(Paragraph("9.2. График отпусков: Формируется и утверждается ежегодно до 1 декабря на предстоящий календарный год. Перенос отпуска возможен по согласованию с тимлидом не позднее чем за 14 дней до утвержденной даты.", body_style))
@@ -346,7 +346,7 @@ def generate_company_policy_pdf(output_path: Path | str = "sample_company_policy
 
     story.append(Spacer(1, 8))
 
-    # SECTION 10
+    # РАЗДЕЛ 10
     story.append(Paragraph("Раздел 10. Служебные командировки и авансовые отчеты", h1_style))
     story.append(Paragraph("10.1. Направление в командировку: Оформляется служебным заданием и приказом за подписью директора. Все расходы на проезд, проживание и суточные покрываются Компанией в полном объеме.", body_style))
     story.append(Paragraph("10.2. Размер суточных: По территории РФ — 2 500 рублей в сутки; для заграничных командировок — 70 долларов США / евро в сутки по курсу ЦБ РФ.", body_style))
@@ -355,7 +355,7 @@ def generate_company_policy_pdf(output_path: Path | str = "sample_company_policy
 
     story.append(Spacer(1, 8))
 
-    # SECTION 11
+    # РАЗДЕЛ 11
     story.append(Paragraph("Раздел 11. Корпоративная этика, дресс-код и урегулирование споров", h1_style))
     story.append(Paragraph("11.1. Стиль одежды (дресс-код): В Компании принят свободный стиль одежды (Smart Casual / Casual). При проведении очных официальных встреч с клиентами и инвесторами рекомендуется деловой стиль (Business Casual).", body_style))
     story.append(Paragraph("11.2. Недискриминация и инклюзивность: В Компании строго запрещены любые формы дискриминации по признакам пола, возраста, национальности, вероисповедания или убеждений. Все сотрудники имеют равные возможности карьерного роста.", body_style))
@@ -363,7 +363,7 @@ def generate_company_policy_pdf(output_path: Path | str = "sample_company_policy
 
     story.append(PageBreak())
 
-    # SECTION 12
+    # РАЗДЕЛ 12
     story.append(Paragraph("Раздел 12. Охрана труда, пожарная безопасность и действия в ЧС", h1_style))
     story.append(Paragraph("12.1. Вводный инструктаж: Каждый сотрудник при приеме на работу проходит обязательный вводный инструктаж по охране труда и пожарной безопасности под роспись в журнале учета.", body_style))
     story.append(Paragraph("12.2. Пожарная безопасность: Курение (включая электронные сигареты и вейпы) на территории офиса категорически запрещено и разрешается только в специально оборудованных уличных зонах. В случае срабатывания пожарной сигнализации сотрудники обязаны немедленно покинуть здание по эвакуационным лестницам.", body_style))
@@ -371,7 +371,7 @@ def generate_company_policy_pdf(output_path: Path | str = "sample_company_policy
 
     story.append(Spacer(1, 8))
 
-    # SECTION 13
+    # РАЗДЕЛ 13
     story.append(Paragraph("Раздел 13. Контактная информация подразделений и матрица эскалации", h1_style))
     story.append(Paragraph("• Отдел подбора и адаптации персонала: hr@technoinnovations.ru | Внутренний номер: 101 | Кабинет 304", bullet_style))
     story.append(Paragraph("• HR Business Partner: hrbp@technoinnovations.ru | Внутренний номер: 102 | Кабинет 305", bullet_style))
@@ -386,4 +386,4 @@ def generate_company_policy_pdf(output_path: Path | str = "sample_company_policy
 
 if __name__ == "__main__":
     generated_path = generate_company_policy_pdf()
-    print(f"Sample PDF generated successfully: {generated_path}")
+    print(f"Тестовый PDF-регламент успешно сгенерирован: {generated_path}")

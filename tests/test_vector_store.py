@@ -42,31 +42,31 @@ def test_vector_store_operations(tmp_path: Path):
         ),
     ]
 
-    # Test adding chunks
+    # Тест добавления чанков
     added = store.add_chunks(chunks)
     assert added == 3
 
-    # Test stats
+    # Тест статистики
     stats = store.get_stats()
     assert stats["total_chunks"] == 3
     assert stats["total_documents"] == 2
 
-    # Test search
+    # Тест векторного поиска
     results = store.search(query="Каков график работы?", top_k=2)
     assert len(results) > 0
     assert results[0].doc_id == "doc-1"
     assert "09:00" in results[0].text
 
-    # Test list documents
+    # Тест списка документов
     docs = store.list_documents()
     assert len(docs) == 2
 
-    # Test delete document
+    # Тест удаления документа
     deleted = store.delete_document("doc-2")
     assert deleted is True
     assert store.get_stats()["total_documents"] == 1
 
-    # Test reset
+    # Тест полного сброса
     reset_ok = store.reset()
     assert reset_ok is True
     assert store.get_stats()["total_chunks"] == 0

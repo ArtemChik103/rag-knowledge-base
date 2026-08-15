@@ -3,12 +3,12 @@ from pathlib import Path
 from pydantic_settings import BaseSettings, SettingsConfigDict
 
 class Settings(BaseSettings):
-    # Base paths
+    # Базовые директории
     BASE_DIR: Path = Path(__file__).resolve().parent.parent
     DATA_DIR: Path = BASE_DIR / "chroma_data"
     UPLOAD_DIR: Path = BASE_DIR / "uploaded_docs"
 
-    # Vector store & embeddings
+    # Векторное хранилище и модель эмбеддингов
     COLLECTION_NAME: str = "knowledge_base"
     EMBEDDING_MODEL: str = "cointegrated/rubert-tiny2"
     CHUNK_SIZE: int = 750
@@ -17,12 +17,12 @@ class Settings(BaseSettings):
     TOP_K: int = 4
     SIMILARITY_THRESHOLD: float = 0.20
 
-    # Optional LLM API Configuration
+    # Опциональная конфигурация LLM API
     OPENAI_API_KEY: str | None = None
     OPENAI_API_BASE: str | None = None
     OPENAI_MODEL: str = "gpt-4o-mini"
     
-    # Server settings
+    # Настройки сервера
     HOST: str = "0.0.0.0"
     PORT: int = 8000
 
@@ -34,6 +34,6 @@ class Settings(BaseSettings):
 
 settings = Settings()
 
-# Ensure directories exist
+# Гарантируем существование директорий
 settings.DATA_DIR.mkdir(parents=True, exist_ok=True)
 settings.UPLOAD_DIR.mkdir(parents=True, exist_ok=True)

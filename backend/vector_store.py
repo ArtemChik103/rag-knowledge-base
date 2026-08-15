@@ -26,11 +26,11 @@ class SearchResult(BaseModel):
     chunk_index: int
     page_number: Optional[int] = None
     text: str
-    score: float # Cosine similarity score [0.0 - 1.0, higher is better]
-    distance: float # Raw distance (cosine distance)
+    score: float # Оценка косинусного сходства [0.0 - 1.0, чем выше, тем лучше]
+    distance: float # Исходная дистанция (косинусное расстояние)
 
 class MultilingualEmbeddingFunction(EmbeddingFunction[Documents]):
-    """High-performance embedding function combining ONNX Runtime, PyTorch inference_mode, and LRU Cache."""
+    """Высокопроизводительная функция эмбеддингов: ONNX Runtime, PyTorch inference_mode и LRU-кэш."""
     def __init__(self, model_name: str = settings.EMBEDDING_MODEL):
         self.model_name = model_name
         self.full_hf_name = model_name if "/" in model_name else f"sentence-transformers/{model_name}"
@@ -55,13 +55,13 @@ class MultilingualEmbeddingFunction(EmbeddingFunction[Documents]):
         ]
         tokenizer_dir = settings.BASE_DIR / "models" / "tokenizer"
         
-        # 1. Try ONNX Runtime first (Fastest C++ inference, 20MB RAM, instant offline startup)
+        # 1. Приоритетно используем ONNX Runtime (C++ инференс, ~20MB RAM, мгновенный оффлайн-старт)
         for onnx_file in onnx_candidates:
             if onnx_file.exists():
                 try:
                     import onnxruntime as ort
                     
-                    logger.info(f"Initializing ONNX Runtime with model: {onnx_file}")
+                    logger.info(f"Инициализация ONNX Runtime с моделью: {onnx_file}")
                     sess_opts = ort.SessionOptions()
                     sess_opts.graph_optimization_level = ort.GraphOptimizationLevel.ORT_DISABLE_ALL
                     sess_opts.intra_op_num_threads = 1
@@ -86,13 +86,13 @@ class MultilingualEmbeddingFunction(EmbeddingFunction[Documents]):
                         tok_src = str(tokenizer_dir) if tokenizer_dir.exists() else self.full_hf_name
                         self._tokenizer = AutoTokenizer.from_pretrained(tok_src, use_fast=True)
 
-                    logger.info(f"ONNX Runtime embedding session ready ({onnx_file.name}).")
+                    logger.info(f"Сессия эмбеддингов ONNX Runtime готова ({onnx_file.name}).")
                     return
                 except Exception as e:
-                    logger.warning(f"Failed to load ONNX session from {onnx_file} ({e}), trying next.")
+                    logger.warning(f"Не удалось загрузить ONNX сессию из {onnx_file} ({e}), пробуем следующий вариант.")
 
 
-        # 2. Fall back to PyTorch SentenceTransformers with torch.inference_mode()
+        # 2. Запасной вариант: PyTorch SentenceTransformers в режиме torch.inference_mode()
         try:
             import torch
             from sentence_transformers import SentenceTransformer
@@ -100,12 +100,12 @@ class MultilingualEmbeddingFunction(EmbeddingFunction[Documents]):
             cpu_threads = min(2, os.cpu_count() or 1)
             torch.set_num_threads(cpu_threads)
 
-            logger.info(f"Loading PyTorch embedding model: {self.model_name}")
+            logger.info(f"Загрузка модели эмбеддингов PyTorch: {self.model_name}")
             self._torch_model = SentenceTransformer(self.model_name)
             self._torch_model.eval()
-            logger.info("SentenceTransformer loaded with torch.inference_mode optimization.")
+            logger.info("SentenceTransformer загружен с оптимизацией torch.inference_mode.")
         except Exception as e:
-            logger.warning(f"Could not load SentenceTransformer ({e}). Initializing dense TF-IDF cosine fallback.")
+            logger.warning(f"Не удалось загрузить SentenceTransformer ({e}). Инициализация плотного TF-IDF косинусного фоллбэка.")
             self._fallback_mode = True
 
 
@@ -125,7 +125,7 @@ class MultilingualEmbeddingFunction(EmbeddingFunction[Documents]):
             self._init_engine()
             self._initialized = True
 
-        # 1. Instant O(1) in-memory LRU cache lookup
+        # 1. Мгновенный O(1) поиск в in-memory LRU-кэше
         cached_results: List[Optional[List[float]]] = [self._cache.get(t) for t in input]
         uncached_indices = [i for i, v in enumerate(cached_results) if v is None]
 
@@ -135,7 +135,7 @@ class MultilingualEmbeddingFunction(EmbeddingFunction[Documents]):
         uncached_texts = [input[i] for i in uncached_indices]
         new_embeddings: List[List[float]] = []
 
-        # 2. ONNX Runtime execution (if available)
+        # 2. Выполнение через ONNX Runtime (если доступен)
         if self._onnx_session is not None and self._tokenizer is not None:
             try:
                 batch_size = 64
@@ -143,7 +143,7 @@ class MultilingualEmbeddingFunction(EmbeddingFunction[Documents]):
                     b_texts = uncached_texts[b_start : b_start + batch_size]
                     
                     if hasattr(self._tokenizer, "encode_batch"):
-                        # Rust tokenizers (sub-millisecond)
+                        # Rust tokenizers (суб-миллисекундная токенизация)
                         encoded = self._tokenizer.encode_batch(b_texts)
                         input_ids = np.array([e.ids for e in encoded], dtype=np.int64)
                         attention_mask = np.array([e.attention_mask for e in encoded], dtype=np.int64)
@@ -173,11 +173,11 @@ class MultilingualEmbeddingFunction(EmbeddingFunction[Documents]):
                     pooled = self._mean_pooling_numpy(outputs[0], attention_mask)
                     new_embeddings.extend([row.tolist() for row in pooled])
             except Exception as e:
-                logger.error(f"ONNX inference error: {e}. Falling back to PyTorch.")
+                logger.error(f"Ошибка инференса ONNX: {e}. Переход на PyTorch.")
                 new_embeddings = []
 
 
-        # 3. PyTorch SentenceTransformers execution (if ONNX didn't run)
+        # 3. Выполнение через PyTorch SentenceTransformers (если ONNX не сработал)
         if not new_embeddings and self._torch_model is not None and not self._fallback_mode:
             try:
                 import torch
@@ -190,9 +190,9 @@ class MultilingualEmbeddingFunction(EmbeddingFunction[Documents]):
                     )
                     new_embeddings = [emb.tolist() for emb in raw_emb]
             except Exception as e:
-                logger.error(f"PyTorch inference error: {e}. Using deterministic dense fallback.")
+                logger.error(f"Ошибка инференса PyTorch: {e}. Используем детерминированный плотный фоллбэк.")
 
-        # 4. Dense semantic fallback (if dependencies are unavailable)
+        # 4. Плотный семантический фоллбэк (если ML-библиотеки недоступны)
         if not new_embeddings:
             import math
             import hashlib
@@ -214,7 +214,7 @@ class MultilingualEmbeddingFunction(EmbeddingFunction[Documents]):
                 norm = math.sqrt(sum(x * x for x in vec)) or 1.0
                 new_embeddings.append([x / norm for x in vec])
 
-        # 5. Populate LRU cache
+        # 5. Заполнение LRU-кэша
         if len(self._cache) > self._max_cache_size:
             self._cache = dict(list(self._cache.items())[self._max_cache_size // 2:])
 

@@ -5,7 +5,7 @@ export function Header({ stats, onReset, onGenerateSample, loadingSample, resett
   return (
     <header className="border-b border-zinc-800/80 bg-zinc-950/80 backdrop-blur-md sticky top-0 z-40">
       <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 h-16 flex items-center justify-between">
-        {/* Left: Brand / Title */}
+        {/* Левая часть: Логотип и заголовок */}
         <div className="flex items-center space-x-3">
           <div className="h-9 w-9 rounded-lg bg-zinc-900 border border-zinc-700/80 flex items-center justify-center text-brand-400 shadow-sm">
             <Database className="h-4.5 w-4.5" />
@@ -25,7 +25,7 @@ export function Header({ stats, onReset, onGenerateSample, loadingSample, resett
           </div>
         </div>
 
-        {/* Center: System Telemetry */}
+        {/* Центр: Системная телеметрия */}
         <div className="hidden md:flex items-center space-x-4 text-xs font-mono text-zinc-400">
           <div className="flex items-center space-x-1.5 px-2.5 py-1 rounded bg-zinc-900/90 border border-zinc-800">
             <FileText className="h-3.5 w-3.5 text-zinc-400" />
@@ -42,7 +42,7 @@ export function Header({ stats, onReset, onGenerateSample, loadingSample, resett
           </div>
         </div>
 
-        {/* Right: Actions */}
+        {/* Правая часть: Действия */}
         <div className="flex items-center space-x-2">
           <button
             onClick={onGenerateSample}

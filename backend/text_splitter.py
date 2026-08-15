@@ -40,7 +40,7 @@ class RecursiveTextSplitter:
                 part_len = len(part_with_sep)
 
                 if part_len > self.chunk_size:
-                    # If this sub-part alone exceeds chunk_size, recursively split it
+                    # Если этот фрагмент сам по себе превышает chunk_size, рекурсивно разбиваем его
                     if current_chunk:
                         joined = sep.join(current_chunk).strip()
                         if joined:
@@ -87,10 +87,10 @@ class RecursiveTextSplitter:
                 current = f"{current} {piece}"
             else:
                 merged_chunks.append(current)
-                # Keep overlap from the end of current
+                # Сохраняем перекрытие (overlap) с конца текущего чанка
                 if self.chunk_overlap > 0 and len(current) > self.chunk_overlap:
                     overlap_text = current[-self.chunk_overlap:].strip()
-                    # Try to find word boundary in overlap
+                    # Ищем границу слова в зоне перекрытия
                     space_idx = overlap_text.find(" ")
                     if space_idx != -1 and space_idx < len(overlap_text) - 1:
                         overlap_text = overlap_text[space_idx + 1:]
@@ -112,7 +112,7 @@ class RecursiveTextSplitter:
             if not page_text:
                 continue
 
-            # Split page text
+            # Разбиение текста страницы
             raw_splits = self._split_text_recursive(page_text, self.separators)
             page_chunks = self._create_overlapping_chunks(raw_splits)
 

@@ -128,9 +128,9 @@ export default function App() {
 
       <main className="flex-1 max-w-7xl w-full mx-auto px-4 sm:px-6 lg:px-8 py-6">
         <div className="grid grid-cols-1 lg:grid-cols-12 gap-6">
-          {/* Left Column: Knowledge Base & Upload (4 cols) */}
+          {/* Левая колонка: База знаний и загрузка документов (4 колонки) */}
           <section className="lg:col-span-4 space-y-5">
-            {/* Upload Box */}
+            {/* Блок загрузки */}
             <div className="rounded-xl border border-zinc-800/90 bg-zinc-900/40 p-4 space-y-3">
               <div className="flex items-center space-x-2 text-xs font-semibold uppercase tracking-wider text-zinc-400 font-mono">
                 <FileText className="h-4 w-4 text-brand-400" />
@@ -139,7 +139,7 @@ export default function App() {
               <DocUploader onUploadSuccess={refreshAll} />
             </div>
 
-            {/* Ingested Documents List */}
+            {/* Список проиндексированных документов */}
             <div className="rounded-xl border border-zinc-800/90 bg-zinc-900/40 p-4 space-y-3">
               <div className="flex items-center justify-between">
                 <div className="flex items-center space-x-2 text-xs font-semibold uppercase tracking-wider text-zinc-400 font-mono">
@@ -156,7 +156,7 @@ export default function App() {
             </div>
           </section>
 
-          {/* Right Column: Search & Q&A Workspace (8 cols) */}
+          {/* Правая колонка: Поиск и генерация ответов RAG (8 колонок) */}
           <section className="lg:col-span-8">
             <div className="rounded-xl border border-zinc-800/90 bg-zinc-900/40 p-5">
               <div className="flex items-center space-x-2 pb-4 mb-4 border-b border-zinc-800/70 text-xs font-semibold uppercase tracking-wider text-zinc-400 font-mono">
@@ -175,7 +175,7 @@ export default function App() {
         </div>
       </main>
 
-      {/* Chunk Inspector Modal */}
+      {/* Модальное окно инспектора фрагментов (чанков) */}
       {inspectingDoc && (
         <ChunkInspectorModal
           doc={inspectingDoc}

@@ -5,7 +5,7 @@ from typing import List, Dict, Any, Optional
 from concurrent.futures import ThreadPoolExecutor
 from pydantic import BaseModel
 
-# Try ultra-fast C-engine PyMuPDF first, fallback to pure-python pypdf
+# Приоритетно используем быстрый C-движок PyMuPDF, при отсутствии — pure-python pypdf
 try:
     import fitz  # PyMuPDF
     HAS_PYMUPDF = True
@@ -31,14 +31,14 @@ class DocumentParser:
     @staticmethod
     def _extract_page_fitz(page_tuple) -> DocumentPage:
         page_idx, page = page_tuple
-        # Extract text blocks directly from MuPDF C-engine (lossless, preserves exact paragraph structure)
+        # Извлечение текстовых блоков через C-движок MuPDF (без потерь, сохраняет структуру параграфов)
         blocks = page.get_text("blocks")
         text_blocks = []
         for b in blocks:
-            # b: (x0, y0, x1, y1, text, block_no, block_type) - block_type 0 is text
+            # b: (x0, y0, x1, y1, text, block_no, block_type) - block_type 0 соответствует тексту
             if len(b) >= 7 and b[6] == 0:
                 raw_block = b[4].strip()
-                # Normalize visual line wraps within the block to spaces
+                # Нормализуем визуальные переносы строк внутри блока в пробелы
                 norm_block = " ".join(line.strip() for line in raw_block.splitlines() if line.strip())
                 if norm_block:
                     text_blocks.append(norm_block)

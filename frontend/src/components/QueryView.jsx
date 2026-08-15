@@ -30,7 +30,7 @@ export function QueryView({ onQuery, loading, result, lastQuery }) {
 
   return (
     <div className="space-y-6">
-      {/* Search Input Bar */}
+      {/* Поисковая строка ввода */}
       <div className="space-y-2">
         <form onSubmit={handleSubmit} className="relative">
           <div className="relative flex items-center">
@@ -63,7 +63,7 @@ export function QueryView({ onQuery, loading, result, lastQuery }) {
           </div>
         </form>
 
-        {/* Quick Sample Questions Chips */}
+        {/* Быстрые подсказки-вопросы */}
         <div className="flex items-center space-x-1.5 overflow-x-auto pb-1 text-xs text-zinc-400 no-scrollbar">
           <span className="text-[11px] uppercase font-mono text-zinc-500 shrink-0">Частые вопросы:</span>
           {sampleQuestions.map((q, idx) => (
@@ -80,10 +80,10 @@ export function QueryView({ onQuery, loading, result, lastQuery }) {
         </div>
       </div>
 
-      {/* Query Result View */}
+      {/* Отображение результата поиска */}
       {result && (
         <div className="space-y-5 animate-fade-in">
-          {/* Answer Card */}
+          {/* Карточка ответа */}
           <div className="rounded-xl border border-zinc-800/90 bg-zinc-900/40 p-5 space-y-4">
             <div className="flex items-start justify-between">
               <div className="flex items-center space-x-2 text-xs font-medium text-brand-400">
@@ -91,7 +91,7 @@ export function QueryView({ onQuery, loading, result, lastQuery }) {
                 <span>Сгенерированный ответ</span>
               </div>
 
-              {/* Confidence Score Pill */}
+              {/* Бейдж оценки уверенности */}
               <div className="flex items-center space-x-2 text-xs font-mono">
                 <span className="text-zinc-500">Уверенность:</span>
                 <span className={`px-2 py-0.5 rounded font-medium ${
@@ -106,12 +106,12 @@ export function QueryView({ onQuery, loading, result, lastQuery }) {
               </div>
             </div>
 
-            {/* Answer Content */}
+            {/* Текст ответа */}
             <div className="text-sm text-zinc-200 leading-relaxed whitespace-pre-line font-sans pl-1">
               {result.answer}
             </div>
 
-            {/* Telemetry Strip */}
+            {/* Строка метрик и телеметрии */}
             <div className="pt-3 border-t border-zinc-800/60 flex flex-wrap items-center justify-between text-[11px] font-mono text-zinc-500 gap-2">
               <div className="flex items-center space-x-3">
                 <span className="flex items-center space-x-1">
@@ -126,7 +126,7 @@ export function QueryView({ onQuery, loading, result, lastQuery }) {
             </div>
           </div>
 
-          {/* Citations & Sources Section */}
+          {/* Секция источников и цитат */}
           {result.citations && result.citations.length > 0 && (
             <div className="space-y-3">
               <div className="flex items-center justify-between">
@@ -189,7 +189,7 @@ export function QueryView({ onQuery, loading, result, lastQuery }) {
         </div>
       )}
 
-      {/* Empty State */}
+      {/* Начальное пустое состояние */}
       {!result && !loading && (
         <div className="rounded-xl border border-zinc-800/40 bg-zinc-900/10 p-12 text-center space-y-3">
           <div className="h-10 w-10 mx-auto rounded-full bg-zinc-900 border border-zinc-800 flex items-center justify-center text-zinc-500">
