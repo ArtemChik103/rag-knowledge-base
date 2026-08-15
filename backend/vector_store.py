@@ -22,11 +22,13 @@ class SearchResult(BaseModel):
     distance: float # Raw distance (cosine distance)
 
 class MultilingualEmbeddingFunction(EmbeddingFunction[Documents]):
-    """Embedding function supporting SentenceTransformers with automatic fallback."""
+    """High-performance embedding function with torch.inference_mode, LRU cache, and fallback."""
     def __init__(self, model_name: str = settings.EMBEDDING_MODEL):
         self.model_name = model_name
         self._model = None
         self._fallback_mode = False
+        self._cache: Dict[str, List[float]] = {}
+        self._max_cache_size = 2000
         self._init_model()
 
     def name(self) -> str:
@@ -37,10 +39,17 @@ class MultilingualEmbeddingFunction(EmbeddingFunction[Documents]):
 
     def _init_model(self):
         try:
+            import torch
             from sentence_transformers import SentenceTransformer
+            
+            # Configure intra-op threads for optimal CPU SIMD (AVX-512 / AVX2)
+            cpu_threads = min(4, os.cpu_count() or 2)
+            torch.set_num_threads(cpu_threads)
+
             logger.info(f"Loading embedding model: {self.model_name}")
             self._model = SentenceTransformer(self.model_name)
-            logger.info("SentenceTransformer model loaded successfully.")
+            self._model.eval()
+            logger.info("SentenceTransformer model loaded and optimized for fast inference.")
         except Exception as e:
             logger.warning(f"Could not load SentenceTransformer ({e}). Initializing dense TF-IDF cosine fallback.")
             self._fallback_mode = True
@@ -49,41 +58,63 @@ class MultilingualEmbeddingFunction(EmbeddingFunction[Documents]):
         if not input:
             return []
         
+        # 1. Check in-memory cache for instant O(1) retrieval
+        cached_results: List[Optional[List[float]]] = [self._cache.get(t) for t in input]
+        uncached_indices = [i for i, v in enumerate(cached_results) if v is None]
+
+        if not uncached_indices:
+            return [cached_results[i] for i in range(len(input))]  # type: ignore
+
+        uncached_texts = [input[i] for i in uncached_indices]
+
+        # 2. Compute embeddings with zero-overhead inference
+        new_embeddings: List[List[float]] = []
         if self._model is not None and not self._fallback_mode:
             try:
-                embeddings = self._model.encode(input, normalize_embeddings=True, show_progress_bar=False)
-                return [emb.tolist() for emb in embeddings]
+                import torch
+                with torch.inference_mode():
+                    raw_emb = self._model.encode(
+                        uncached_texts,
+                        batch_size=32,
+                        normalize_embeddings=True,
+                        show_progress_bar=False
+                    )
+                    new_embeddings = [emb.tolist() for emb in raw_emb]
             except Exception as e:
                 logger.error(f"Inference error with SentenceTransformer: {e}. Using fallback.")
         
-        # Robust multilingual fallback using character and word n-grams + hashing
-        import math
-        import hashlib
-        
-        dim = 384
-        result = []
-        for text in input:
-            vec = [0.0] * dim
-            words = text.lower().split()
-            if not words:
-                words = [text.lower()]
-            for word in words:
-                # Hash word
-                h = int(hashlib.md5(word.encode('utf-8')).hexdigest(), 16)
-                idx = h % dim
-                sign = 1.0 if (h >> 8) % 2 == 0 else -1.0
-                vec[idx] += sign
-                # Character trigrams for morphological robustness
-                for i in range(len(word) - 2):
-                    tri = word[i:i+3]
-                    ht = int(hashlib.md5(tri.encode('utf-8')).hexdigest(), 16)
-                    vec[ht % dim] += 0.5 * (1.0 if (ht >> 8) % 2 == 0 else -1.0)
-            
-            # L2 normalize
-            norm = math.sqrt(sum(x * x for x in vec)) or 1.0
-            norm_vec = [x / norm for x in vec]
-            result.append(norm_vec)
-        return result
+        if not new_embeddings:
+            # Fallback dense n-gram calculation
+            import math
+            import hashlib
+            dim = 384
+            for text in uncached_texts:
+                vec = [0.0] * dim
+                words = text.lower().split()
+                if not words:
+                    words = [text.lower()]
+                for word in words:
+                    h = int(hashlib.md5(word.encode('utf-8')).hexdigest(), 16)
+                    idx = h % dim
+                    sign = 1.0 if (h >> 8) % 2 == 0 else -1.0
+                    vec[idx] += sign
+                    for i in range(len(word) - 2):
+                        tri = word[i:i+3]
+                        ht = int(hashlib.md5(tri.encode('utf-8')).hexdigest(), 16)
+                        vec[ht % dim] += 0.5 * (1.0 if (ht >> 8) % 2 == 0 else -1.0)
+                norm = math.sqrt(sum(x * x for x in vec)) or 1.0
+                new_embeddings.append([x / norm for x in vec])
+
+        # 3. Store in LRU cache
+        if len(self._cache) > self._max_cache_size:
+            # Evict oldest entries
+            self._cache = dict(list(self._cache.items())[self._max_cache_size // 2:])
+
+        for idx, text, emb in zip(uncached_indices, uncached_texts, new_embeddings):
+            self._cache[text] = emb
+            cached_results[idx] = emb
+
+        return [cached_results[i] for i in range(len(input))]  # type: ignore
 
 
 class VectorStore:
@@ -124,7 +155,6 @@ class VectorStore:
             for c in chunks
         ]
 
-        # Upsert in batches of 100
         batch_size = 100
         total = len(ids)
         for i in range(0, total, batch_size):
@@ -143,7 +173,6 @@ class VectorStore:
 
         where_filter = {"doc_id": doc_id} if doc_id else None
         
-        # Limit top_k to existing chunks
         total_count = self.collection.count()
         actual_k = min(top_k, total_count)
         if actual_k <= 0:
@@ -166,8 +195,6 @@ class VectorStore:
         distances = results["distances"][0]
 
         for chunk_id, text, meta, dist in zip(ids, docs, metas, distances):
-            # Cosine distance to similarity score: similarity = 1 - distance
-            # ChromaDB cosine distance range is [0.0, 2.0]
             similarity = max(0.0, min(1.0, 1.0 - (dist / 2.0 if dist > 1.0 else dist)))
             
             page_num = meta.get("page_number")
@@ -187,7 +214,6 @@ class VectorStore:
                 )
             )
 
-        # Sort by similarity score descending
         search_results.sort(key=lambda x: x.score, reverse=True)
         return search_results
 
